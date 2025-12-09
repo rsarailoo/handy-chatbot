@@ -125,7 +125,7 @@ app.use((req, res, next) => {
 async function initializeApp() {
   try {
     console.log("Starting server initialization...");
-    console.log("PORT:", process.env.PORT || "5000");
+    console.log("PORT:", process.env.PORT || "5001");
     
     await registerRoutes(httpServer, app);
     console.log("Routes registered");
@@ -180,7 +180,7 @@ async function initializeApp() {
 
 // Start the HTTP server (only for non-Vercel environments)
 async function startServer() {
-  const port = parseInt(process.env.PORT || "5000", 10);
+  const port = parseInt(process.env.PORT || "5001", 10);
   console.log(`Attempting to listen on port ${port}...`);
   
   return new Promise<void>((resolve, reject) => {
@@ -206,12 +206,48 @@ async function startServer() {
 
 // For Vercel: Create handler that initializes on first call
 let initialized = false;
+let initializationPromise: Promise<void> | null = null;
+
 async function vercelHandler(req: any, res: any) {
+  // Ensure initialization only happens once, even with concurrent requests
   if (!initialized) {
-    await initializeApp();
-    initialized = true;
+    if (!initializationPromise) {
+      initializationPromise = initializeApp()
+        .then(() => {
+          initialized = true;
+          console.log("✅ Vercel handler initialized successfully");
+        })
+        .catch((error: any) => {
+          console.error("❌ Failed to initialize app for Vercel:", error);
+          console.error("Error stack:", error.stack);
+          // Reset promise so we can retry on next request
+          initializationPromise = null;
+          throw error;
+        });
+    }
+    
+    try {
+      await initializationPromise;
+    } catch (error: any) {
+      if (!res.headersSent) {
+        res.status(500).json({ 
+          error: "Server initialization failed",
+          message: process.env.NODE_ENV === "development" ? error.message : undefined
+        });
+      }
+      return;
+    }
   }
-  return app(req, res);
+  
+  // Handle the request
+  try {
+    return app(req, res);
+  } catch (error: any) {
+    console.error("❌ Error in request handler:", error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
 }
 
 // Initialize and start server for local development
