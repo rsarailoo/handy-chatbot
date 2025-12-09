@@ -1,275 +1,432 @@
-# راهنمای Deploy روی Railway.com
+# 🚂 Deploy Handy Chatbot to Railway
 
-Railway یک پلتفرم cloud است که خیلی راحت‌تر از هاست معمولی است. این راهنما مرحله به مرحله توضیح می‌دهد.
-
----
-
-## مرحله 1: ساخت حساب Railway
-
-1. برو به [railway.com](https://railway.com)
-2. روی **"Start a New Project"** کلیک کن
-3. با **GitHub** یا **GitLab** وارد شو (یا با Email)
+Railway is a cloud platform that makes deployment much easier than traditional hosting. This guide walks you through the complete deployment process step by step.
 
 ---
 
-## مرحله 2: اتصال Repository
+## 📋 Prerequisites
 
-### گزینه A: از GitHub/GitLab
-
-1. در Railway، روی **"New Project"** کلیک کن
-2. **"Deploy from GitHub repo"** رو انتخاب کن
-3. Repository پروژه رو انتخاب کن
-4. Railway خودکار شروع به Deploy می‌کنه
-
-### گزینه B: از Local (بدون Git)
-
-1. در Railway، روی **"New Project"** کلیک کن
-2. **"Empty Project"** رو انتخاب کن
-3. بعداً فایل‌ها رو با Railway CLI آپلود می‌کنی
+- **Railway Account** - Sign up at [railway.com](https://railway.com)
+- **GitHub Repository** - Your code must be on GitHub
+- **Google OAuth Credentials** - Already configured
+- **OpenRouter API Key** - Already configured
 
 ---
 
-## مرحله 3: اضافه کردن PostgreSQL Database
+## 🚀 Step 1: Create Railway Account
 
-1. در پروژه Railway، روی **"+ New"** کلیک کن
-2. **"Database"** رو انتخاب کن
-3. **"Add PostgreSQL"** رو بزن
-4. Railway خودکار یک PostgreSQL Database می‌سازه
-
-**بعد از ساخت Database:**
-1. روی Database کلیک کن
-2. به تب **"Variables"** برو
-3. متغیر `DATABASE_URL` رو کپی کن (بعداً استفاده می‌کنیم)
+1. Go to [railway.com](https://railway.com)
+2. Click **"Start a New Project"**
+3. Sign in with **GitHub**, **GitLab**, or **Email**
 
 ---
 
-## مرحله 4: اجرای Migration
+## 🔗 Step 2: Connect Repository
 
-### روش 1: از Railway Dashboard
+### Option A: Deploy from GitHub (Recommended)
 
-1. روی Database کلیک کن
-2. به تب **"Query"** برو
-3. محتوای فایل `migration.sql` رو کپی کن و اجرا کن
-4. بعد `migration_attachments.sql` رو هم اجرا کن
+1. In Railway dashboard, click **"New Project"**
+2. Select **"Deploy from GitHub repo"**
+3. Authorize Railway to access your GitHub account (if first time)
+4. Select your repository: `rsarailoo/handy-chatbot`
+5. Railway will automatically start deploying
 
-### روش 2: از Railway CLI
+### Option B: Deploy from Local (Without Git)
+
+1. In Railway dashboard, click **"New Project"**
+2. Select **"Empty Project"**
+3. You'll upload files using Railway CLI later
+
+---
+
+## 🗄️ Step 3: Add PostgreSQL Database
+
+1. In your Railway project, click **"+ New"**
+2. Select **"Database"**
+3. Click **"Add PostgreSQL"**
+4. Railway will automatically create a PostgreSQL database
+
+**After database is created:**
+1. Click on the database service
+2. Go to **"Variables"** tab
+3. Copy the `DATABASE_URL` variable (you'll need this later)
+
+**Note:** Railway automatically provides `DATABASE_URL` to your main service, so you may not need to manually copy it.
+
+---
+
+## 📊 Step 4: Run Database Migrations
+
+### Method 1: Using Railway Dashboard (Easiest)
+
+1. Click on your PostgreSQL database service
+2. Go to **"Data"** tab
+3. Click **"Query"** or **"Connect"**
+4. Copy the contents of `migration.sql` from your repository
+5. Paste and execute in the SQL editor
+6. Repeat for `migration_attachments.sql` (if needed)
+
+### Method 2: Using Railway CLI
 
 ```bash
-# نصب Railway CLI
+# Install Railway CLI
 npm i -g @railway/cli
 
-# Login
+# Login to Railway
 railway login
 
-# اتصال به پروژه
+# Link to your project
 railway link
 
-# اتصال به Database
+# Connect to PostgreSQL
 railway connect postgres
 
-# اجرای Migration
+# Run migrations
 psql < migration.sql
 psql < migration_attachments.sql
 ```
 
+### Method 3: Using psql with Connection String
+
+1. Get `DATABASE_URL` from Railway database variables
+2. Run locally or on a machine with psql:
+
+```bash
+psql $DATABASE_URL -f migration.sql
+psql $DATABASE_URL -f migration_attachments.sql
+```
+
 ---
 
-## مرحله 5: تنظیم Environment Variables
+## ⚙️ Step 5: Configure Environment Variables
 
-در Railway Dashboard:
+In Railway Dashboard:
 
-1. روی **Service** (سرویس اصلی) کلیک کن
-2. به تب **"Variables"** برو
-3. این متغیرها رو اضافه کن:
+1. Click on your **main service** (not the database)
+2. Go to **"Variables"** tab
+3. Click **"New Variable"** and add each variable:
 
 ```env
 NODE_ENV=production
-PORT=5000
+PORT=5001
 
-# Database (از Database Service کپی کن)
+# Database (Railway auto-provides this, but you can reference it)
 DATABASE_URL=${{Postgres.DATABASE_URL}}
 
-# Session Secret (یک رشته تصادفی)
-SESSION_SECRET=یک-رشته-تصادفی-قوی-حداقل-32-کاراکتر
+# Session Secret (generate a strong random string)
+SESSION_SECRET=your-very-strong-random-secret-key-here-min-32-chars
 
 # Google OAuth
 GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=your-client-secret
 GOOGLE_CALLBACK_URL=https://your-app-name.up.railway.app/api/auth/google/callback
 
-# Allowed Origins (بعد از گرفتن Domain تغییر بده)
+# OpenRouter API
+OPENROUTER_API_KEY=sk-or-your-openrouter-api-key
+
+# CORS - Allowed origins (update after getting custom domain)
 ALLOWED_ORIGINS=https://your-app-name.up.railway.app
 ```
 
-### ساخت SESSION_SECRET:
+### Generate SESSION_SECRET
 
-در Terminal:
+In your terminal:
 ```bash
 openssl rand -base64 32
 ```
 
-یا از [این سایت](https://randomkeygen.com/) استفاده کن.
+Or use an online generator like [randomkeygen.com](https://randomkeygen.com/)
 
-### تنظیم Google OAuth:
+### Configure Google OAuth
 
-1. برو به [console.cloud.google.com](https://console.cloud.google.com)
-2. پروژه بساز (یا از قبلی استفاده کن)
-3. **APIs & Services** > **Credentials**
-4. **Create Credentials** > **OAuth client ID**
-5. **Application type**: Web application
-6. **Authorized redirect URI**: 
+1. Go to [Google Cloud Console](https://console.cloud.google.com)
+2. Create or select a project
+3. Navigate to **APIs & Services** → **Credentials**
+4. Click **Create Credentials** → **OAuth client ID**
+5. Select **Web application**
+6. Add **Authorized redirect URI**:
    ```
    https://your-app-name.up.railway.app/api/auth/google/callback
    ```
-7. **Client ID** و **Secret** رو کپی کن و در Railway بذار
+   (You'll update this after getting your Railway domain)
+7. Copy **Client ID** and **Client Secret** to Railway variables
 
 ---
 
-## مرحله 6: تنظیم Build و Start Commands
+## 🔧 Step 6: Configure Build and Start Commands
 
-Railway خودکار از `package.json` می‌خونه:
-- **Build**: `npm run build`
-- **Start**: `npm start`
+Railway automatically reads from `package.json`:
+- **Build Command**: `npm run build`
+- **Start Command**: `npm start`
 
-اگر مشکلی بود، در Railway Dashboard:
-1. روی Service کلیک کن
-2. به تب **"Settings"** برو
-3. **Build Command**: `npm run build`
-4. **Start Command**: `npm start`
+**If you need to override:**
 
----
+1. Click on your service
+2. Go to **"Settings"** tab
+3. Under **"Build & Deploy"**:
+   - **Build Command**: `npm run build`
+   - **Start Command**: `npm start`
 
-## مرحله 7: Deploy
-
-### اگر از GitHub استفاده می‌کنی:
-
-1. تغییرات رو به GitHub Push کن:
-```bash
-git add .
-git commit -m "Ready for Railway deploy"
-git push
+**Verify your `package.json` has:**
+```json
+{
+  "scripts": {
+    "build": "tsx script/build.ts",
+    "start": "node dist/index.cjs"
+  }
+}
 ```
 
-2. Railway خودکار شروع به Build و Deploy می‌کنه
+---
 
-### اگر از Local استفاده می‌کنی:
+## 🚢 Step 7: Deploy
+
+### If Using GitHub Integration:
+
+1. Push your changes to GitHub:
+```bash
+git add .
+git commit -m "Ready for Railway deployment"
+git push origin main
+```
+
+2. Railway will automatically:
+   - Detect the push
+   - Start building
+   - Deploy when build completes
+
+### If Using Railway CLI:
 
 ```bash
-# نصب Railway CLI
+# Install Railway CLI (if not already installed)
 npm i -g @railway/cli
 
 # Login
 railway login
 
-# اتصال به پروژه
+# Link to project
 railway link
 
 # Deploy
 railway up
 ```
 
----
-
-## مرحله 8: گرفتن Domain
-
-1. در Railway Dashboard، روی Service کلیک کن
-2. به تب **"Settings"** برو
-3. در بخش **"Domains"**، روی **"Generate Domain"** کلیک کن
-4. یک Domain مثل `your-app-name.up.railway.app` می‌گیری
-
-**یا Domain شخصی خودت:**
-1. روی **"Custom Domain"** کلیک کن
-2. Domain خودت رو وارد کن
-3. DNS Records رو تنظیم کن (Railway راهنمایی می‌کنه)
+**Monitor the deployment:**
+- Go to Railway dashboard
+- Click on your service
+- Go to **"Deployments"** tab
+- Watch the build logs in real-time
 
 ---
 
-## مرحله 9: به‌روزرسانی Environment Variables
+## 🌐 Step 8: Get Domain
 
-بعد از گرفتن Domain:
+### Railway-Generated Domain:
 
-1. `GOOGLE_CALLBACK_URL` رو به‌روز کن:
-```
-https://your-domain.com/api/auth/google/callback
-```
+1. In Railway dashboard, click on your service
+2. Go to **"Settings"** tab
+3. Under **"Domains"**, click **"Generate Domain"**
+4. You'll get a domain like: `handy-chatbot-production.up.railway.app`
 
-2. `ALLOWED_ORIGINS` رو به‌روز کن:
-```
-https://your-domain.com
-```
+### Custom Domain (Optional):
 
-3. در Google Console هم Redirect URI رو به‌روز کن
+1. In **"Settings"** → **"Domains"**
+2. Click **"Custom Domain"**
+3. Enter your domain name
+4. Railway will provide DNS records to add:
+   - **CNAME**: `yourdomain.com` → `your-app.up.railway.app`
+   - Or **A Record**: Point to Railway's IP (if provided)
 
----
-
-## مرحله 10: تست
-
-1. برو به Domain که Railway داد
-2. باید صفحه Login رو ببینی
-3. با Google وارد شو
-4. باید صفحه Chat باز بشه
+**Update DNS at your domain registrar:**
+- Add the CNAME or A record as instructed
+- Wait for DNS propagation (can take up to 48 hours, usually 5-30 minutes)
 
 ---
 
-## اگر مشکل داشتی
+## 🔄 Step 9: Update Environment Variables
 
-### بررسی Logs:
+After getting your domain (Railway-generated or custom):
 
-در Railway Dashboard:
-1. روی Service کلیک کن
-2. به تب **"Deployments"** برو
-3. روی آخرین Deployment کلیک کن
-4. Logs رو ببین
+1. Update `GOOGLE_CALLBACK_URL`:
+   ```
+   https://your-domain.com/api/auth/google/callback
+   ```
 
-### بررسی Environment Variables:
+2. Update `ALLOWED_ORIGINS`:
+   ```
+   https://your-domain.com
+   ```
 
-1. روی Service کلیک کن
-2. به تب **"Variables"** برو
-3. مطمئن شو همه متغیرها درست تنظیم شده
+3. Update Google Console:
+   - Go to Google Cloud Console
+   - Update OAuth redirect URI to match new domain
+   - Add both Railway domain and custom domain if using both
 
-### Restart:
-
-1. روی Service کلیک کن
-2. روی **"Redeploy"** کلیک کن
-
----
-
-## نکات مهم
-
-✅ **Database URL**: Railway خودکار `DATABASE_URL` رو از Database Service می‌گیره. اگر دستی اضافه کردی، حتماً از `${{Postgres.DATABASE_URL}}` استفاده کن.
-
-✅ **Port**: Railway خودکار Port رو تنظیم می‌کنه. از متغیر محیطی `PORT` استفاده کن (که Railway می‌ده).
-
-✅ **Build Time**: اولین Build ممکنه 5-10 دقیقه طول بکشه. صبر کن.
-
-✅ **Free Tier**: Railway یک Free Tier داره که برای شروع کافیه. بعداً می‌تونی Upgrade کنی.
+4. **Redeploy** (Railway will auto-redeploy on variable change, or manually trigger)
 
 ---
 
-## خلاصه مراحل:
+## ✅ Step 10: Verify Deployment
 
-1. ✅ حساب Railway بساز
-2. ✅ Repository رو Connect کن (یا Empty Project بساز)
-3. ✅ PostgreSQL Database اضافه کن
-4. ✅ Migration اجرا کن
-5. ✅ Environment Variables رو تنظیم کن
-6. ✅ Google OAuth رو تنظیم کن
-7. ✅ Deploy کن
-8. ✅ Domain بگیر
-9. ✅ Environment Variables رو به‌روز کن
-10. ✅ تست کن
+1. Visit your Railway domain
+2. You should see the login page
+3. Test Google OAuth login
+4. Verify chat functionality works
+5. Test admin panel (if you're an admin)
 
 ---
 
-## فایل‌های لازم که باید در Repository باشه:
+## 🐛 Troubleshooting
 
-✅ `package.json` (با scripts: build, start)
-✅ `railway.json` (اختیاری - برای تنظیمات)
-✅ `Procfile` (اختیاری - برای start command)
+### Check Deployment Logs
+
+1. In Railway dashboard, click on your service
+2. Go to **"Deployments"** tab
+3. Click on the latest deployment
+4. View build and runtime logs
+
+### Check Environment Variables
+
+1. Click on your service
+2. Go to **"Variables"** tab
+3. Verify all variables are set correctly
+4. Check for typos or missing values
+
+### Common Issues
+
+**Build Fails:**
+- Check build logs for errors
+- Verify `package.json` has correct scripts
+- Ensure all dependencies are listed
+- Check Node.js version compatibility
+
+**Application Crashes:**
+- Check runtime logs
+- Verify `DATABASE_URL` is correct
+- Ensure all required environment variables are set
+- Check port configuration (Railway sets PORT automatically)
+
+**Database Connection Errors:**
+- Verify `DATABASE_URL` is set (Railway auto-provides it)
+- Check database service is running
+- Verify migrations were run successfully
+- Check database connection limits
+
+**OAuth Not Working:**
+- Verify `GOOGLE_CALLBACK_URL` matches exactly in Google Console
+- Check `ALLOWED_ORIGINS` includes your domain
+- Ensure HTTPS is used (Railway provides this automatically)
+- Verify Client ID and Secret are correct
+
+### Restart/Redeploy
+
+1. Click on your service
+2. Click **"Redeploy"** button
+3. Or trigger redeploy via CLI: `railway up`
+
+---
+
+## 📝 Important Notes
+
+✅ **Database URL**: Railway automatically provides `DATABASE_URL` from the database service. Use `${{Postgres.DATABASE_URL}}` if referencing in other services.
+
+✅ **Port**: Railway automatically sets the `PORT` environment variable. Your app should use `process.env.PORT` (which your app already does).
+
+✅ **Build Time**: First build may take 5-10 minutes. Be patient.
+
+✅ **Free Tier**: Railway offers a free tier that's great for getting started. You can upgrade later if needed.
+
+✅ **Automatic Deploys**: Railway automatically deploys on every push to your connected branch (usually `main`).
+
+✅ **Environment Variables**: Changes to environment variables trigger automatic redeployment.
+
+---
+
+## 📋 Deployment Checklist
+
+- [ ] Railway account created
+- [ ] Repository connected (or empty project created)
+- [ ] PostgreSQL database added
+- [ ] Migrations executed
+- [ ] Environment variables configured
+- [ ] Google OAuth configured
+- [ ] Build and start commands verified
+- [ ] Initial deployment successful
+- [ ] Domain obtained (Railway or custom)
+- [ ] Environment variables updated with domain
+- [ ] Google OAuth callback URL updated
+- [ ] Application tested and working
+
+---
+
+## 📁 Required Files in Repository
+
+✅ `package.json` (with `build` and `start` scripts)
+✅ `railway.json` (optional - for Railway-specific config)
+✅ `Procfile` (optional - Railway reads package.json by default)
 ✅ `migration.sql`
 ✅ `migration_attachments.sql`
+✅ `ecosystem.config.js` (for reference, not used on Railway)
 
 ---
 
-**اگر سوالی داشتی یا مشکلی پیش اومد، بگو تا کمک کنم! 🚀**
+## 🔄 Updating Your Application
 
+### Automatic Updates (GitHub Integration):
+
+1. Make changes locally
+2. Commit and push to GitHub:
+```bash
+git add .
+git commit -m "Update application"
+git push origin main
+```
+
+3. Railway automatically detects and deploys
+
+### Manual Updates (CLI):
+
+```bash
+railway up
+```
+
+---
+
+## 💰 Railway Pricing
+
+- **Free Tier**: $5 credit monthly (good for testing)
+- **Developer Plan**: $5/month + usage
+- **Team Plan**: $20/month + usage
+
+Check [railway.com/pricing](https://railway.com/pricing) for current pricing.
+
+---
+
+## 🎉 Success!
+
+Your Handy Chatbot should now be live on Railway!
+
+**Your app URL:** `https://your-app-name.up.railway.app`
+
+**Next Steps:**
+- Test all functionality
+- Set up custom domain (optional)
+- Configure monitoring
+- Set up backups for database
+
+---
+
+## 📞 Support
+
+If you encounter issues:
+1. Check Railway deployment logs
+2. Review environment variables
+3. Verify database connectivity
+4. Test locally with production environment variables
+5. Check Railway status page: [status.railway.app](https://status.railway.app)
+
+**Railway Documentation:** [docs.railway.app](https://docs.railway.app)
+
+---
+
+**Happy deploying! 🚂🚀**

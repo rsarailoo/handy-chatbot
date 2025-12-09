@@ -1,174 +1,192 @@
-# راهنمای کامل Deploy کردن اپلیکیشن به هاست
+# 🚀 Complete Deployment Guide - VPS/Dedicated Server
 
-این راهنما شامل تمام مراحل لازم برای انتقال و راه‌اندازی اپلیکیشن شما روی هاست است.
+This comprehensive guide covers all steps needed to deploy your Handy Chatbot application to a VPS or dedicated server.
 
-## ⚡ خلاصه سریع (Quick Start)
+## ⚡ Quick Start
 
-اگر قبلاً با deploy کردن Node.js apps کار کرده‌اید، این خلاصه برای شما کافی است:
+If you're experienced with deploying Node.js applications, this summary should be sufficient:
 
-1. **نصب پیش‌نیازها**: Node.js 20+, PostgreSQL, Nginx, PM2
-2. **راه‌اندازی Database**: استفاده از Neon/Supabase یا نصب PostgreSQL محلی
-3. **اجرای Migration**: اجرای `migration.sql` و `migration_attachments.sql`
-4. **تنظیم `.env`**: کپی کردن متغیرهای محیطی (مثال در ادامه)
+1. **Install Prerequisites**: Node.js 20+, PostgreSQL, Nginx, PM2
+2. **Setup Database**: Use Neon/Supabase or install PostgreSQL locally
+3. **Run Migrations**: Execute `migration.sql` and `migration_attachments.sql`
+4. **Configure `.env`**: Set up environment variables (see example below)
 5. **Build**: `npm run build`
-6. **راه‌اندازی با PM2**: `pm2 start ecosystem.config.js`
-7. **تنظیم Nginx**: reverse proxy به localhost:5000
-8. **نصب SSL**: `certbot --nginx -d yourdomain.com`
+6. **Start with PM2**: `pm2 start ecosystem.config.js`
+7. **Configure Nginx**: Set up reverse proxy to localhost:5001
+8. **Install SSL**: `certbot --nginx -d yourdomain.com`
 
-**متغیرهای محیطی ضروری:**
+**Essential Environment Variables:**
 ```env
 NODE_ENV=production
-PORT=5000
-DATABASE_URL=postgresql://...
-SESSION_SECRET=...
-GOOGLE_CLIENT_ID=...
-GOOGLE_CLIENT_SECRET=...
+PORT=5001
+DATABASE_URL=postgresql://user:password@host:5432/dbname
+SESSION_SECRET=your-very-strong-random-secret-key-here-min-32-chars
+GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=your-google-client-secret
 GOOGLE_CALLBACK_URL=https://yourdomain.com/api/auth/google/callback
+OPENROUTER_API_KEY=sk-or-your-openrouter-api-key
 ALLOWED_ORIGINS=https://yourdomain.com
 ```
 
-برای جزئیات کامل، ادامه راهنما را مطالعه کنید.
-
-## 📋 پیش‌نیازها
-
-### 1. سرور (VPS یا Dedicated Server)
-- سیستم عامل: Ubuntu 20.04+ یا Debian 11+
-- حداقل RAM: 2GB (توصیه: 4GB+)
-- حداقل CPU: 2 Core
-- حداقل فضای دیسک: 20GB
-
-### 2. دامنه (Domain)
-- یک دامنه که به IP سرور شما اشاره کند
-
-### 3. سرویس‌های مورد نیاز
-- **PostgreSQL Database**: می‌توانید از سرویس‌های زیر استفاده کنید:
-  - [Neon](https://neon.tech) (رایگان تا 512MB)
-  - [Supabase](https://supabase.com) (رایگان تا 500MB)
-  - [ElephantSQL](https://www.elephantsql.com) (رایگان تا 20MB)
-  - یا PostgreSQL روی همان سرور
-
-- **Google OAuth**: برای احراز هویت
-  - ایجاد پروژه در [Google Cloud Console](https://console.cloud.google.com)
-  - دریافت Client ID و Client Secret
+For detailed instructions, continue reading below.
 
 ---
 
-## 🚀 مراحل Deploy
+## 📋 Prerequisites
 
-### مرحله 1: اتصال به سرور
+### 1. Server Requirements
+
+- **Operating System**: Ubuntu 20.04+ or Debian 11+
+- **Minimum RAM**: 2GB (Recommended: 4GB+)
+- **Minimum CPU**: 2 Cores
+- **Minimum Disk Space**: 20GB
+- **SSH Access**: Root or sudo access
+
+### 2. Domain Name
+
+- A domain name pointing to your server's IP address
+- DNS A record configured
+
+### 3. Required Services
+
+- **PostgreSQL Database**: Choose one of the following:
+  - [Neon](https://neon.tech) (Free tier: 512MB)
+  - [Supabase](https://supabase.com) (Free tier: 500MB)
+  - [ElephantSQL](https://www.elephantsql.com) (Free tier: 20MB)
+  - Local PostgreSQL installation
+
+- **Google OAuth**: For authentication
+  - Create project in [Google Cloud Console](https://console.cloud.google.com)
+  - Obtain Client ID and Client Secret
+
+---
+
+## 🚀 Deployment Steps
+
+### Step 1: Connect to Server
 
 ```bash
 ssh root@your-server-ip
-# یا
+# or
 ssh username@your-server-ip
 ```
 
-### مرحله 2: نصب پیش‌نیازها
+### Step 2: Install Prerequisites
 
 ```bash
-# به‌روزرسانی سیستم
+# Update system packages
 sudo apt update && sudo apt upgrade -y
 
-# نصب Node.js 20.x
+# Install Node.js 20.x
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt install -y nodejs
 
-# نصب PostgreSQL (اگر می‌خواهید روی همان سرور باشد)
+# Verify installation
+node --version  # Should show v20.x.x
+npm --version
+
+# Install PostgreSQL (optional - if using local database)
 sudo apt install -y postgresql postgresql-contrib
 
-# نصب Nginx (برای reverse proxy)
+# Install Nginx (for reverse proxy)
 sudo apt install -y nginx
 
-# نصب PM2 (برای مدیریت process)
+# Install PM2 (for process management)
 sudo npm install -g pm2
 
-# نصب Git
+# Install Git
 sudo apt install -y git
 
-# نصب Build Essential (برای compile کردن برخی packages)
+# Install build tools
 sudo apt install -y build-essential
 ```
 
-### مرحله 3: آماده‌سازی Database
+### Step 3: Setup Database
 
-#### گزینه 1: استفاده از Database خارجی (توصیه می‌شود)
+#### Option 1: Use External Database (Recommended)
 
-1. یک حساب در [Neon](https://neon.tech) یا [Supabase](https://supabase.com) ایجاد کنید
-2. یک Database جدید بسازید
-3. Connection String را کپی کنید (مثل: `postgresql://user:password@host:5432/dbname`)
+1. Create an account at [Neon](https://neon.tech) or [Supabase](https://supabase.com)
+2. Create a new project and database
+3. Copy the connection string (format: `postgresql://user:password@host:5432/dbname`)
 
-#### گزینه 2: نصب PostgreSQL روی سرور
+#### Option 2: Install PostgreSQL Locally
 
 ```bash
-# راه‌اندازی PostgreSQL
+# Start PostgreSQL service
 sudo systemctl start postgresql
 sudo systemctl enable postgresql
 
-# ایجاد کاربر و دیتابیس
+# Create database and user
 sudo -u postgres psql
 
-# در PostgreSQL shell:
-CREATE DATABASE serailo;
-CREATE USER serailo_user WITH PASSWORD 'your-strong-password';
-GRANT ALL PRIVILEGES ON DATABASE serailo TO serailo_user;
+# In PostgreSQL shell:
+CREATE DATABASE handy_chatbot;
+CREATE USER chatbot_user WITH PASSWORD 'your-strong-password';
+GRANT ALL PRIVILEGES ON DATABASE handy_chatbot TO chatbot_user;
 \q
+
+# Connection string will be:
+# postgresql://chatbot_user:your-strong-password@localhost:5432/handy_chatbot
 ```
 
-### مرحله 4: اجرای Migration های Database
+### Step 4: Run Database Migrations
 
+**For Cloud Databases (Neon/Supabase):**
+1. Go to your database dashboard
+2. Open SQL Editor
+3. Copy and paste contents of `migration.sql`
+4. Execute the SQL
+5. Repeat for `migration_attachments.sql` (if needed)
+
+**For Local PostgreSQL:**
 ```bash
-# اتصال به دیتابیس و اجرای migration.sql
-# اگر از Neon/Supabase استفاده می‌کنید، از SQL Editor آنها استفاده کنید
-# اگر از PostgreSQL محلی استفاده می‌کنید:
-
-psql -U serailo_user -d serailo -f migration.sql
-psql -U serailo_user -d serailo -f migration_attachments.sql
+# Connect and run migrations
+psql -U chatbot_user -d handy_chatbot -f migration.sql
+psql -U chatbot_user -d handy_chatbot -f migration_attachments.sql
 ```
 
-**نکته**: فایل‌های `migration.sql` و `migration_attachments.sql` را باید از پروژه خود کپی کنید.
-
-### مرحله 5: کلون کردن پروژه
+### Step 5: Clone Project
 
 ```bash
-# رفتن به دایرکتوری مناسب
+# Navigate to appropriate directory
 cd /var/www
-# یا
+# or
 cd /home/username
 
-# کلون کردن پروژه (اگر در Git است)
-git clone https://github.com/your-username/serailo.git
-cd serailo
+# Clone repository
+git clone https://github.com/rsarailoo/handy-chatbot.git
+cd handy-chatbot
 
-# یا آپلود فایل‌ها با SCP/SFTP
+# Or upload files via SCP/SFTP if not using Git
 ```
 
-### مرحله 6: نصب Dependencies
+### Step 6: Install Dependencies
 
 ```bash
-cd /var/www/serailo  # یا مسیر پروژه شما
+cd /var/www/handy-chatbot  # or your project path
 npm install
 ```
 
-### مرحله 7: تنظیم Environment Variables
+### Step 7: Configure Environment Variables
 
 ```bash
-# ایجاد فایل .env
+# Create .env file
 nano .env
 ```
 
-محتوای فایل `.env`:
+**Contents of `.env` file:**
 
 ```env
 # Environment
 NODE_ENV=production
-PORT=5000
+PORT=5001
 
 # Database
 DATABASE_URL=postgresql://user:password@host:5432/dbname
-# مثال برای Neon:
+# Example for Neon:
 # DATABASE_URL=postgresql://user:password@ep-xxx-xxx.region.aws.neon.tech/neondb?sslmode=require
 
-# Session Secret (یک رشته تصادفی قوی)
+# Session Secret (generate a strong random string)
 SESSION_SECRET=your-very-strong-random-secret-key-here-min-32-chars
 
 # Google OAuth
@@ -176,58 +194,55 @@ GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=your-google-client-secret
 GOOGLE_CALLBACK_URL=https://yourdomain.com/api/auth/google/callback
 
-# OpenRouter API (اختیاری - اگر می‌خواهید از مدل‌های OpenRouter استفاده کنید)
-OPENROUTER_API_KEY=your-openrouter-api-key
+# OpenRouter API
+OPENROUTER_API_KEY=sk-or-your-openrouter-api-key
 
-# CORS - دامنه‌های مجاز (با کاما جدا کنید)
+# CORS - Allowed origins (comma-separated)
 ALLOWED_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
 ```
 
-**نکات مهم:**
-- `SESSION_SECRET` باید یک رشته تصادفی و قوی باشد (حداقل 32 کاراکتر)
-- `GOOGLE_CALLBACK_URL` باید دقیقاً با تنظیمات Google Cloud Console مطابقت داشته باشد
-- `ALLOWED_ORIGINS` باید شامل تمام دامنه‌هایی باشد که می‌خواهید به API دسترسی داشته باشند
+**Important Notes:**
+- Generate `SESSION_SECRET` using: `openssl rand -base64 32`
+- `GOOGLE_CALLBACK_URL` must exactly match Google Cloud Console settings
+- `ALLOWED_ORIGINS` should include all domains that need API access
 
-### مرحله 8: تنظیم Google OAuth
+### Step 8: Configure Google OAuth
 
-1. به [Google Cloud Console](https://console.cloud.google.com) بروید
-2. یک پروژه جدید ایجاد کنید یا پروژه موجود را انتخاب کنید
-3. به **APIs & Services > Credentials** بروید
-4. **Create Credentials > OAuth client ID** را انتخاب کنید
-5. Application type: **Web application**
-6. Authorized redirect URIs: `https://yourdomain.com/api/auth/google/callback`
-7. Client ID و Client Secret را کپی کنید و در فایل `.env` قرار دهید
+1. Go to [Google Cloud Console](https://console.cloud.google.com)
+2. Create or select a project
+3. Navigate to **APIs & Services** → **Credentials**
+4. Click **Create Credentials** → **OAuth client ID**
+5. Select **Web application**
+6. Add **Authorized redirect URIs**:
+   - `https://yourdomain.com/api/auth/google/callback`
+   - `https://www.yourdomain.com/api/auth/google/callback` (if using www)
+7. Copy Client ID and Client Secret to `.env` file
 
-### مرحله 9: Build کردن پروژه
+### Step 9: Build the Project
 
 ```bash
 npm run build
 ```
 
-این دستور:
-- Frontend (React) را build می‌کند
-- Backend (Express) را bundle می‌کند
-- فایل‌های نهایی در پوشه `dist/` قرار می‌گیرند
+This command will:
+- Build the React frontend
+- Bundle the Express backend
+- Output files to `dist/` directory
 
-### مرحله 10: راه‌اندازی با PM2
+### Step 10: Setup PM2
 
-```bash
-# ایجاد فایل ecosystem.config.js
-nano ecosystem.config.js
-```
-
-محتوای `ecosystem.config.js`:
+The `ecosystem.config.js` file should already exist. Verify it contains:
 
 ```javascript
 module.exports = {
   apps: [{
-    name: 'serailo',
+    name: 'handy-chatbot',
     script: './dist/index.cjs',
     instances: 1,
     exec_mode: 'fork',
     env: {
       NODE_ENV: 'production',
-      PORT: 5000
+      PORT: 5001
     },
     error_file: './logs/err.log',
     out_file: './logs/out.log',
@@ -241,41 +256,47 @@ module.exports = {
 ```
 
 ```bash
-# ایجاد پوشه logs
+# Create logs directory
 mkdir -p logs
 
-# راه‌اندازی با PM2
+# Start application with PM2
 pm2 start ecosystem.config.js
 
-# ذخیره تنظیمات PM2 برای restart خودکار
+# Save PM2 process list
 pm2 save
+
+# Setup PM2 to start on system boot
 pm2 startup
-# دستور نمایش داده شده را اجرا کنید
+# Follow the command output to complete setup
 ```
 
-### مرحله 11: تنظیم Nginx (Reverse Proxy)
+### Step 11: Configure Nginx (Reverse Proxy)
 
 ```bash
-# ایجاد فایل تنظیمات Nginx
-sudo nano /etc/nginx/sites-available/serailo
+# Create Nginx configuration file
+sudo nano /etc/nginx/sites-available/handy-chatbot
 ```
 
-محتوای فایل:
+**Configuration file contents:**
 
 ```nginx
+# HTTP to HTTPS redirect
 server {
     listen 80;
+    listen [::]:80;
     server_name yourdomain.com www.yourdomain.com;
 
-    # Redirect HTTP to HTTPS
+    # Redirect all HTTP to HTTPS
     return 301 https://$server_name$request_uri;
 }
 
+# HTTPS server
 server {
     listen 443 ssl http2;
+    listen [::]:443 ssl http2;
     server_name yourdomain.com www.yourdomain.com;
 
-    # SSL Certificate (بعد از نصب Let's Encrypt تنظیم می‌شود)
+    # SSL Certificate (configured after Let's Encrypt)
     ssl_certificate /etc/letsencrypt/live/yourdomain.com/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/yourdomain.com/privkey.pem;
 
@@ -283,18 +304,21 @@ server {
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_ciphers HIGH:!aNULL:!MD5;
     ssl_prefer_server_ciphers on;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 10m;
 
     # Security Headers
     add_header X-Frame-Options "SAMEORIGIN" always;
     add_header X-Content-Type-Options "nosniff" always;
     add_header X-XSS-Protection "1; mode=block" always;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
 
     # Max upload size
     client_max_body_size 10M;
 
-    # Proxy to Node.js app
+    # Proxy to Node.js application
     location / {
-        proxy_pass http://localhost:5000;
+        proxy_pass http://localhost:5001;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
@@ -312,7 +336,7 @@ server {
 
     # Static files caching
     location ~* \.(jpg|jpeg|png|gif|ico|css|js|svg|woff|woff2|ttf|eot)$ {
-        proxy_pass http://localhost:5000;
+        proxy_pass http://localhost:5001;
         expires 1y;
         add_header Cache-Control "public, immutable";
     }
@@ -320,204 +344,276 @@ server {
 ```
 
 ```bash
-# فعال کردن سایت
-sudo ln -s /etc/nginx/sites-available/serailo /etc/nginx/sites-enabled/
+# Enable the site
+sudo ln -s /etc/nginx/sites-available/handy-chatbot /etc/nginx/sites-enabled/
 
-# تست تنظیمات Nginx
+# Remove default site (optional)
+sudo rm /etc/nginx/sites-enabled/default
+
+# Test Nginx configuration
 sudo nginx -t
 
-# راه‌اندازی مجدد Nginx
+# Restart Nginx
 sudo systemctl restart nginx
 sudo systemctl enable nginx
 ```
 
-### مرحله 12: نصب SSL Certificate (Let's Encrypt)
+### Step 12: Install SSL Certificate (Let's Encrypt)
 
 ```bash
-# نصب Certbot
+# Install Certbot
 sudo apt install -y certbot python3-certbot-nginx
 
-# دریافت SSL Certificate
+# Obtain SSL certificate
 sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com
 
-# تست auto-renewal
+# Test automatic renewal
 sudo certbot renew --dry-run
 ```
 
-### مرحله 13: تنظیم Firewall
+Certbot will automatically:
+- Obtain SSL certificates
+- Configure Nginx for HTTPS
+- Set up automatic renewal
+
+### Step 13: Configure Firewall
 
 ```bash
-# نصب UFW (اگر نصب نیست)
+# Install UFW (if not installed)
 sudo apt install -y ufw
 
-# تنظیمات Firewall
+# Configure firewall rules
 sudo ufw allow 22/tcp    # SSH
 sudo ufw allow 80/tcp    # HTTP
 sudo ufw allow 443/tcp   # HTTPS
+
+# Enable firewall
 sudo ufw enable
 
-# بررسی وضعیت
+# Check status
 sudo ufw status
 ```
 
-### مرحله 14: تست و بررسی
+### Step 14: Verify Deployment
 
 ```bash
-# بررسی وضعیت PM2
+# Check PM2 status
 pm2 status
-pm2 logs serailo
+pm2 logs handy-chatbot --lines 50
 
-# بررسی وضعیت Nginx
+# Check Nginx status
 sudo systemctl status nginx
 
-# بررسی لاگ‌های سرور
+# Check application logs
 tail -f logs/out.log
 tail -f logs/err.log
+
+# Test application
+curl http://localhost:5001/api/test/db
 ```
 
 ---
 
-## 🔧 دستورات مفید
+## 🔧 Useful Commands
 
-### مدیریت PM2
+### PM2 Management
 
 ```bash
-# مشاهده وضعیت
+# View status
 pm2 status
 
-# مشاهده لاگ‌ها
-pm2 logs serailo
+# View logs
+pm2 logs handy-chatbot
+pm2 logs handy-chatbot --lines 100
 
-# Restart
-pm2 restart serailo
+# Restart application
+pm2 restart handy-chatbot
 
-# Stop
-pm2 stop serailo
+# Stop application
+pm2 stop handy-chatbot
 
-# مشاهده استفاده از منابع
+# View resource usage
 pm2 monit
+
+# View detailed info
+pm2 show handy-chatbot
 ```
 
-### مدیریت Nginx
+### Nginx Management
 
 ```bash
-# تست تنظیمات
+# Test configuration
 sudo nginx -t
 
-# Reload (بدون downtime)
+# Reload (no downtime)
 sudo nginx -s reload
 
 # Restart
 sudo systemctl restart nginx
 
-# مشاهده لاگ‌ها
+# View error logs
 sudo tail -f /var/log/nginx/error.log
+
+# View access logs
 sudo tail -f /var/log/nginx/access.log
 ```
 
-### به‌روزرسانی اپلیکیشن
+### Application Updates
 
 ```bash
-cd /var/www/serailo
+cd /var/www/handy-chatbot
 
-# Pull تغییرات جدید (اگر از Git استفاده می‌کنید)
+# Pull latest changes
 git pull origin main
 
-# نصب dependencies جدید
+# Install new dependencies
 npm install
 
-# Build مجدد
+# Rebuild application
 npm run build
 
-# Restart PM2
-pm2 restart serailo
+# Restart with PM2
+pm2 restart handy-chatbot
 ```
 
 ---
 
-## 🐛 عیب‌یابی (Troubleshooting)
+## 🐛 Troubleshooting
 
-### مشکل: اپلیکیشن راه‌اندازی نمی‌شود
+### Application Won't Start
 
 ```bash
-# بررسی لاگ‌های PM2
-pm2 logs serailo --lines 100
+# Check PM2 logs
+pm2 logs handy-chatbot --lines 100
 
-# بررسی Environment Variables
+# Check environment variables
 pm2 env 0
 
-# تست دستی اجرای سرور
-cd /var/www/serailo
+# Test manual start
+cd /var/www/handy-chatbot
 node dist/index.cjs
 ```
 
-### مشکل: Database Connection Error
+### Database Connection Error
 
 ```bash
-# تست اتصال به Database
+# Test database connection
 psql $DATABASE_URL
 
-# بررسی DATABASE_URL در .env
+# Check DATABASE_URL in .env
 cat .env | grep DATABASE_URL
+
+# Verify database is accessible
+# For cloud databases, check firewall/network settings
 ```
 
-### مشکل: Google OAuth کار نمی‌کند
+### Google OAuth Not Working
 
-- مطمئن شوید `GOOGLE_CALLBACK_URL` در `.env` با تنظیمات Google Cloud Console مطابقت دارد
-- مطمئن شوید دامنه شما در Authorized domains اضافه شده است
-- بررسی کنید که SSL Certificate معتبر است
+- Verify `GOOGLE_CALLBACK_URL` in `.env` matches Google Console exactly
+- Ensure your domain is added to Authorized domains in Google Console
+- Verify SSL certificate is valid and trusted
+- Check that `ALLOWED_ORIGINS` includes your domain
 
-### مشکل: Static Files لود نمی‌شوند
+### Static Files Not Loading
 
 ```bash
-# بررسی وجود پوشه dist/public
+# Check if dist/public exists
 ls -la dist/public
 
-# بررسی permissions
+# Check permissions
 sudo chown -R $USER:$USER dist/
+
+# Verify build completed successfully
+ls -la dist/
+```
+
+### Nginx 502 Bad Gateway
+
+```bash
+# Check if application is running
+pm2 status
+
+# Check application logs
+pm2 logs handy-chatbot
+
+# Verify port 5001 is listening
+netstat -tlnp | grep 5001
+
+# Check Nginx error log
+sudo tail -f /var/log/nginx/error.log
+```
+
+### SSL Certificate Issues
+
+```bash
+# Check certificate status
+sudo certbot certificates
+
+# Renew certificate manually
+sudo certbot renew
+
+# Check certificate expiration
+sudo certbot certificates
 ```
 
 ---
 
-## 📝 چک‌لیست نهایی
+## 📝 Final Checklist
 
-- [ ] Node.js و npm نصب شده است
-- [ ] PostgreSQL Database راه‌اندازی شده است
-- [ ] Migration های Database اجرا شده‌اند
-- [ ] فایل `.env` با تمام متغیرهای لازم ایجاد شده است
-- [ ] Google OAuth تنظیم شده است
-- [ ] پروژه build شده است (`npm run build`)
-- [ ] PM2 تنظیم و راه‌اندازی شده است
-- [ ] Nginx تنظیم شده است
-- [ ] SSL Certificate نصب شده است
-- [ ] Firewall تنظیم شده است
-- [ ] دامنه به IP سرور اشاره می‌کند
-- [ ] اپلیکیشن در دسترس است و کار می‌کند
-
----
-
-## 🔒 نکات امنیتی
-
-1. **هرگز فایل `.env` را در Git commit نکنید**
-2. **SESSION_SECRET باید قوی و تصادفی باشد**
-3. **از HTTPS استفاده کنید (SSL Certificate)**
-4. **Firewall را فعال کنید و فقط پورت‌های لازم را باز کنید**
-5. **به‌روزرسانی‌های امنیتی سیستم عامل را نصب کنید**
-6. **از PM2 برای مدیریت process استفاده کنید**
-7. **لاگ‌ها را به صورت منظم بررسی کنید**
+- [ ] Node.js and npm installed
+- [ ] PostgreSQL database set up
+- [ ] Database migrations executed
+- [ ] `.env` file created with all required variables
+- [ ] Google OAuth configured
+- [ ] Project built successfully (`npm run build`)
+- [ ] PM2 configured and running
+- [ ] Nginx configured and running
+- [ ] SSL certificate installed
+- [ ] Firewall configured
+- [ ] Domain pointing to server IP
+- [ ] Application accessible and working
+- [ ] OAuth login tested
+- [ ] Chat functionality tested
 
 ---
 
-## 📞 پشتیبانی
+## 🔒 Security Best Practices
 
-اگر مشکلی پیش آمد، لاگ‌های زیر را بررسی کنید:
-
-- PM2 Logs: `pm2 logs serailo`
-- Nginx Error Log: `/var/log/nginx/error.log`
-- Nginx Access Log: `/var/log/nginx/access.log`
-- Application Logs: `./logs/out.log` و `./logs/err.log`
+1. **Never commit `.env` file** - Ensure it's in `.gitignore`
+2. **Use strong SESSION_SECRET** - Generate with `openssl rand -base64 32`
+3. **Always use HTTPS** - SSL certificate is mandatory
+4. **Configure firewall** - Only open necessary ports (22, 80, 443)
+5. **Keep system updated** - Regularly run `sudo apt update && sudo apt upgrade`
+6. **Use PM2** - For process management and auto-restart
+7. **Monitor logs** - Regularly check application and server logs
+8. **Backup database** - Set up regular database backups
+9. **Use strong passwords** - For database and system accounts
+10. **Limit SSH access** - Use SSH keys instead of passwords
 
 ---
 
-**موفق باشید! 🚀**
+## 📞 Support & Logs
 
+If you encounter issues, check these logs:
+
+- **PM2 Logs**: `pm2 logs handy-chatbot`
+- **Application Logs**: `./logs/out.log` and `./logs/err.log`
+- **Nginx Error Log**: `/var/log/nginx/error.log`
+- **Nginx Access Log**: `/var/log/nginx/access.log`
+- **System Logs**: `journalctl -u nginx` or `journalctl -xe`
+
+---
+
+## 🎉 Success!
+
+Your Handy Chatbot should now be live and accessible at `https://yourdomain.com`!
+
+**Next Steps:**
+- Test all functionality
+- Set up monitoring
+- Configure backups
+- Set up CI/CD for automatic deployments
+
+---
+
+**Good luck with your deployment! 🚀**

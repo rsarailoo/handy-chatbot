@@ -121,7 +121,8 @@ app.use((req, res, next) => {
   next();
 });
 
-(async () => {
+// Initialize the app (register routes, setup middleware, etc.)
+async function initializeApp() {
   try {
     console.log("Starting server initialization...");
     console.log("PORT:", process.env.PORT || "5000");
@@ -157,29 +158,39 @@ app.use((req, res, next) => {
     // importantly only setup vite in development and after
     // setting up all the other routes so the catch-all route
     // doesn't interfere with the other routes
-    if (process.env.NODE_ENV === "production") {
+    if (process.env.NODE_ENV === "production" && !process.env.VERCEL) {
       console.log("Production mode: serving static files");
       serveStatic(app);
-    } else {
+    } else if (!process.env.VERCEL) {
       console.log("Development mode: setting up Vite...");
       const { setupVite } = await import("./vite");
       await setupVite(httpServer, app);
       console.log("Vite setup complete");
+    } else {
+      // For Vercel, serve static files from dist/public
+      console.log("Vercel mode: serving static files");
+      serveStatic(app);
     }
+  } catch (error: any) {
+    console.error("❌ Failed to initialize app:", error);
+    console.error(error.stack);
+    throw error;
+  }
+}
 
-    // ALWAYS serve the app on the port specified in the environment variable PORT
-    // Other ports are firewalled. Default to 5000 if not specified.
-    // this serves both the API and the client.
-    // It is the only port that is not firewalled.
-    const port = parseInt(process.env.PORT || "5000", 10);
-    console.log(`Attempting to listen on port ${port}...`);
-    
+// Start the HTTP server (only for non-Vercel environments)
+async function startServer() {
+  const port = parseInt(process.env.PORT || "5000", 10);
+  console.log(`Attempting to listen on port ${port}...`);
+  
+  return new Promise<void>((resolve, reject) => {
     httpServer.listen(
-        port,
+      port,
       "0.0.0.0",
       () => {
         log(`✅ Server is serving on port ${port}`);
         console.log(`✅ Server is running at http://localhost:${port}`);
+        resolve();
       },
     );
     
@@ -188,12 +199,33 @@ app.use((req, res, next) => {
       if (error.code === "EADDRINUSE") {
         console.error(`Port ${port} is already in use. Please use a different port.`);
       }
-      process.exit(1);
+      reject(error);
     });
-    
-  } catch (error: any) {
-    console.error("❌ Failed to start server:", error);
-    console.error(error.stack);
-    process.exit(1);
+  });
+}
+
+// For Vercel: Create handler that initializes on first call
+let initialized = false;
+async function vercelHandler(req: any, res: any) {
+  if (!initialized) {
+    await initializeApp();
+    initialized = true;
   }
-})();
+  return app(req, res);
+}
+
+// Initialize and start server for local development
+if (!process.env.VERCEL) {
+  (async () => {
+    try {
+      await initializeApp();
+      await startServer();
+    } catch (error: any) {
+      console.error("❌ Failed to start server:", error);
+      process.exit(1);
+    }
+  })();
+}
+
+// Export handler for Vercel (only used when VERCEL env is set)
+export default vercelHandler;
