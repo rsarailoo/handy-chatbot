@@ -426,29 +426,105 @@ server {
 
 ## 🛠️ Tech Stack
 
-### Frontend
-- **React 18** - UI library
-- **TypeScript** - Type safety
-- **Tailwind CSS** - Styling
-- **Radix UI** - Accessible components
-- **Tanstack Query** - Data fetching
-- **Wouter** - Routing
-- **Framer Motion** - Animations
+### Core Technologies
 
-### Backend
-- **Node.js** - Runtime
-- **Express.js** - Web framework
-- **TypeScript** - Type safety
-- **Drizzle ORM** - Database ORM
-- **Passport.js** - Authentication
+| Technology | Version | Purpose |
+|------------|---------|---------|
+| **Node.js** | 20.x+ | JavaScript runtime |
+| **TypeScript** | 5.6.3 | Type-safe JavaScript |
+| **React** | 18.3.1 | UI library |
+| **Express.js** | 4.21.2 | Web framework |
+| **PostgreSQL** | 12+ (14-17 recommended, 17.7 latest stable) | Primary database |
+
+### Frontend Technologies
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| **React** | 18.3.1 | UI library |
+| **React DOM** | 18.3.1 | React DOM renderer |
+| **TypeScript** | 5.6.3 | Type safety |
+| **Vite** | 5.4.20 | Build tool & dev server |
+| **Tailwind CSS** | 3.4.17 | Utility-first CSS framework |
+| **@tailwindcss/vite** | 4.1.3 | Tailwind Vite plugin |
+| **@tailwindcss/typography** | 0.5.15 | Typography plugin |
+| **Radix UI** | 1.x - 2.x | Accessible component primitives |
+| **@tanstack/react-query** | 5.60.5 | Server state management |
+| **Wouter** | 3.3.5 | Lightweight routing |
+| **Framer Motion** | 11.13.1 | Animation library |
+| **React Hook Form** | 7.55.0 | Form state management |
+| **Lucide React** | 0.453.0 | Icon library |
+| **React Markdown** | 10.1.0 | Markdown rendering |
+| **React Syntax Highlighter** | 16.1.0 | Code syntax highlighting |
+| **Next Themes** | 0.4.6 | Theme management |
+| **Date-fns** | 3.6.0 | Date utility library |
+| **Recharts** | 2.15.2 | Chart library |
+| **CMDK** | 1.1.1 | Command menu component |
+| **Vaul** | 1.1.2 | Drawer component |
+
+### Backend Technologies
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| **Express** | 4.21.2 | Web framework |
+| **TypeScript** | 5.6.3 | Type safety |
+| **TSX** | 4.20.5 | TypeScript execution |
+| **Drizzle ORM** | 0.39.1 | Type-safe SQL ORM |
+| **Drizzle Kit** | 0.18.1 | Database migrations |
+| **Drizzle Zod** | 0.7.0 | Zod schema integration |
+| **Passport.js** | 0.7.0 | Authentication middleware |
+| **Passport Google OAuth20** | 2.0.0 | Google OAuth strategy |
+| **Passport Local** | 1.0.0 | Local authentication |
+| **Express Session** | 1.18.1 | Session management |
+| **Connect PG Simple** | 10.0.0 | PostgreSQL session store |
+| **Helmet** | 8.1.0 | Security headers |
+| **CORS** | 2.8.5 | Cross-origin resource sharing |
+| **Express Rate Limit** | 8.2.1 | Rate limiting middleware |
+| **Multer** | 2.0.2 | File upload handling |
+| **PG** | 8.16.3 | PostgreSQL client |
+| **@neondatabase/serverless** | 0.10.4 | Neon serverless driver |
+| **Dotenv** | 17.2.3 | Environment variables |
+| **Zod** | 3.24.2 | Schema validation |
+| **Zod Validation Error** | 3.4.0 | Error formatting |
+
+### AI & External Services
+
+| Service/Package | Version | Purpose |
+|-----------------|---------|---------|
+| **OpenRouter API** | Latest | AI model gateway |
+| **OpenAI SDK** | 6.9.1 | OpenAI API client |
+| **Groq SDK** | 0.37.0 | Groq AI API client |
+
+### Development Tools
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| **TypeScript** | 5.6.3 | Type checking |
+| **Vite** | 5.4.20 | Build tool |
+| **@vitejs/plugin-react** | 4.7.0 | React plugin for Vite |
+| **ESBuild** | 0.25.0 | Fast JavaScript bundler |
+| **PostCSS** | 8.4.47 | CSS processing |
+| **Autoprefixer** | 10.4.20 | CSS vendor prefixes |
+| **Drizzle Kit** | 0.18.1 | Database toolkit |
 
 ### Database
-- **PostgreSQL** - Primary database
-- **Neon/Supabase** - Cloud database providers
 
-### AI
-- **OpenRouter** - AI model gateway
-- **Multiple Models** - GPT-4, Llama, Mixtral support
+- **PostgreSQL** - Primary database
+  - **Minimum Version**: 12.x
+  - **Recommended**: 14.x, 15.x, 16.x, or 17.x
+  - **Latest Stable**: 17.7 (as of 2025)
+  - **Cloud Providers**: 
+    - Neon (PostgreSQL 14-16)
+    - Supabase (PostgreSQL 14-15)
+    - ElephantSQL (PostgreSQL 12-15)
+  - **Note**: PostgreSQL 18.0 is in preview (not recommended for production yet)
+- **ORM**: Drizzle ORM 0.39.1
+- **Client**: pg 8.16.3 (supports PostgreSQL 7.4+)
+
+### Deployment Platforms
+
+- **Vercel** - Serverless deployment (see `DEPLOY_VERCEL.md`)
+- **Railway** - Full-stack deployment (see `DEPLOY_RAILWAY.md`)
+- **VPS/Dedicated** - Traditional hosting (see `DEPLOY.md`)
 
 ---
 
