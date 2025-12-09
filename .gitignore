@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+.pnp.*
+
+# Build output
+dist/
+coverage/
+
+# Local env & secrets
+.env
+.env.*
+!.env.example
+.local/
+
+# Uploads (user data)
+uploads/*
+!uploads/.gitkeep
+
+# OS / editor junk
+.DS_Store
+.idea/
+.vscode/
+
+# Temp archives
+*.tar.gz
+
+# Server public assets generated in build
+server/public
+
+# Misc
+vite.config.ts.*
