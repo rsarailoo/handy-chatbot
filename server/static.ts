@@ -1,15 +1,12 @@
 import express, { type Express } from "express";
 import fs from "fs";
 import path from "path";
-import { fileURLToPath } from "url";
-
-// Get __dirname equivalent for ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 export function serveStatic(app: Express) {
-  // Path to dist/public from server directory (go up one level to project root, then into dist/public)
-  const distPath = path.resolve(__dirname, "..", "dist", "public");
+  // Use process.cwd() which works in both CommonJS and ES modules
+  // In Vercel, this will be the project root
+  // In local builds, this will also be the project root
+  const distPath = path.resolve(process.cwd(), "dist", "public");
   
   if (!fs.existsSync(distPath)) {
     // In Vercel, static files are served by Vercel's CDN, so this is just for SPA fallback
