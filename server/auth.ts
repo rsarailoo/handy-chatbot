@@ -73,7 +73,7 @@ if (isGoogleOAuthConfigured()) {
             console.error("❌ Database tables not found! Please run migration.sql in Neon Console");
             const dbError = new Error("Database tables not found. Please run migration.sql in Neon Console.");
             (dbError as any).code = "DB_TABLES_MISSING";
-            return done(dbError, null);
+            return done(dbError, undefined);
           }
           
           // Check for unique constraint violation (user already exists with different googleId)
@@ -81,10 +81,10 @@ if (isGoogleOAuthConfigured()) {
             console.error("❌ User with this email already exists with different Google ID");
             const duplicateError = new Error("User with this email already exists.");
             (duplicateError as any).code = "DUPLICATE_USER";
-            return done(duplicateError, null);
+            return done(duplicateError, undefined);
           }
           
-          return done(error, null);
+          return done(error, undefined);
         }
       }
     )

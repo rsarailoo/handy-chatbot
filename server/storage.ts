@@ -281,27 +281,27 @@ export class DbStorage implements IStorage {
     const searchTerm = `%${query}%`;
     
     // Search in conversation titles
-    let titleQuery = db
+    const titleQuery = db
       .select()
       .from(conversations)
-      .where(ilike(conversations.title, searchTerm));
-    
-    if (userId) {
-      titleQuery = titleQuery.where(eq(conversations.userId, userId)) as any;
-    }
+      .where(
+        userId 
+          ? and(ilike(conversations.title, searchTerm), eq(conversations.userId, userId))
+          : ilike(conversations.title, searchTerm)
+      );
     
     const titleMatches = await titleQuery.orderBy(desc(conversations.updatedAt));
 
     // Search in message content and get unique conversations
-    let messageQuery = db
+    const messageQuery = db
       .selectDistinct({ conversation: conversations })
       .from(conversations)
       .innerJoin(messages, eq(conversations.id, messages.conversationId))
-      .where(ilike(messages.content, searchTerm));
-    
-    if (userId) {
-      messageQuery = messageQuery.where(eq(conversations.userId, userId)) as any;
-    }
+      .where(
+        userId
+          ? and(ilike(messages.content, searchTerm), eq(conversations.userId, userId))
+          : ilike(messages.content, searchTerm)
+      );
     
     const messageMatches = await messageQuery.orderBy(desc(conversations.updatedAt));
 
