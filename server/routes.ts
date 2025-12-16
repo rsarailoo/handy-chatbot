@@ -287,7 +287,9 @@ export async function registerRoutes(
   });
 
   // Create uploads directory if it doesn't exist
-  const uploadsDir = path.join(process.cwd(), "uploads");
+  // On Vercel, the filesystem is read-only except for /tmp, so we must use /tmp for uploads
+  const uploadsBaseDir = process.env.VERCEL ? "/tmp" : process.cwd();
+  const uploadsDir = path.join(uploadsBaseDir, "uploads");
   if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
   }
