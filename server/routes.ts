@@ -93,9 +93,24 @@ async function callOpenRouter(
 
   if (!response.ok) {
     const text = await response.text();
-    // Don't expose full error details in production
+    let errorDetails: any;
+    try {
+      errorDetails = JSON.parse(text);
+    } catch {
+      errorDetails = { raw: text };
+    }
+    
+    // Log detailed error for debugging (server-side only)
+    console.error("❌ OpenRouter API error (non-streaming):");
+    console.error("  - Status:", response.status, response.statusText);
+    console.error("  - Error details:", JSON.stringify(errorDetails, null, 2));
+    console.error("  - Model:", OPENROUTER_MODEL);
+    console.error("  - Messages count:", validatedMessages.length);
+    console.error("  - API Key prefix:", validatedApiKey.substring(0, 10) + "...");
+    
+    // Don't expose full error details to client in production
     const errorMessage = process.env.NODE_ENV === "development" 
-      ? `OpenRouter request failed: ${response.status} ${response.statusText}`
+      ? `OpenRouter request failed: ${response.status} ${response.statusText} - ${JSON.stringify(errorDetails)}`
       : "خطا در ارتباط با سرویس هوش مصنوعی";
     throw new Error(errorMessage);
   }
@@ -136,9 +151,24 @@ async function* callOpenRouterStream(
 
   if (!response.ok) {
     const text = await response.text();
-    // Don't expose full error details in production
+    let errorDetails: any;
+    try {
+      errorDetails = JSON.parse(text);
+    } catch {
+      errorDetails = { raw: text };
+    }
+    
+    // Log detailed error for debugging (server-side only)
+    console.error("❌ OpenRouter API error (streaming):");
+    console.error("  - Status:", response.status, response.statusText);
+    console.error("  - Error details:", JSON.stringify(errorDetails, null, 2));
+    console.error("  - Model:", model);
+    console.error("  - Messages count:", validatedMessages.length);
+    console.error("  - API Key prefix:", validatedApiKey.substring(0, 10) + "...");
+    
+    // Don't expose full error details to client in production
     const errorMessage = process.env.NODE_ENV === "development" 
-      ? `OpenRouter request failed: ${response.status} ${response.statusText}`
+      ? `OpenRouter request failed: ${response.status} ${response.statusText} - ${JSON.stringify(errorDetails)}`
       : "خطا در ارتباط با سرویس هوش مصنوعی";
     throw new Error(errorMessage);
   }
