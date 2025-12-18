@@ -25,6 +25,10 @@ declare module "http" {
   }
 }
 
+// Trust proxy - Required for Vercel and other platforms behind reverse proxies
+// This allows Express to correctly read X-Forwarded-For headers for rate limiting
+app.set('trust proxy', true);
+
 // Security: Helmet for security headers
 app.use(
   helmet({
