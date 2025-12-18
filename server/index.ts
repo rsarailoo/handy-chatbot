@@ -114,10 +114,24 @@ if (process.env.DATABASE_URL) {
     sessionStore = new PgStore({
       pool: sessionPool,
       tableName: 'session', // Table name for sessions
-      createTableIfMissing: true, // Automatically create table if it doesn't exist
+      createTableIfMissing: false, // Don't auto-create (file path issues in bundled code)
     });
     
-    console.log('✅ PostgreSQL session store configured');
+    // Verify session table exists, create if needed
+    sessionPool.query(`
+      CREATE TABLE IF NOT EXISTS session (
+        sid VARCHAR NOT NULL COLLATE "default",
+        sess JSON NOT NULL,
+        expire TIMESTAMP(6) NOT NULL,
+        CONSTRAINT session_pkey PRIMARY KEY (sid)
+      );
+      CREATE INDEX IF NOT EXISTS idx_session_expire ON session(expire);
+    `).then(() => {
+      console.log('✅ PostgreSQL session store configured and table verified');
+    }).catch((err: any) => {
+      console.error('⚠️ Failed to verify/create session table:', err.message);
+      console.log('ℹ️ Please run migration_session.sql manually in your database');
+    });
   } catch (error: any) {
     console.error('❌ Failed to configure PostgreSQL session store:', error.message);
     console.error('  - Error stack:', error.stack);
