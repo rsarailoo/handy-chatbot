@@ -378,7 +378,7 @@ export function ConversationSidebar({
         className={cn(
           "fixed md:relative inset-y-0 right-0 z-50 w-72 bg-sidebar/95 backdrop-blur-xl border-l border-sidebar-border/50 flex flex-col transition-all duration-300 shadow-xl md:shadow-none",
           isMobileOpen ? "translate-x-0" : "translate-x-full",
-          isDesktopOpen ? "md:translate-x-0" : "md:translate-x-full md:hidden"
+          isDesktopOpen ? "md:translate-x-0" : "md:translate-x-full"
         )}
       >
         <div className="p-3 border-b border-sidebar-border/50 space-y-2 bg-sidebar/50 backdrop-blur-sm">
@@ -644,7 +644,7 @@ export function ConversationSidebar({
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7 opacity-100 transition-opacity"
+                          className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
                           onClick={(e) => e.stopPropagation()}
                           data-testid={`button-conversation-menu-${conversation.id}`}
                         >

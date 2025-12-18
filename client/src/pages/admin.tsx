@@ -16,6 +16,8 @@ import {
   Plus,
   Edit,
   X,
+  LogOut,
+  ArrowRight,
 } from "lucide-react";
 import { BetaBadge } from "@/components/beta-badge";
 import { Button } from "@/components/ui/button";
@@ -35,6 +37,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useLocation } from "wouter";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -105,6 +108,7 @@ interface ApiKey {
 export default function AdminPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -292,22 +296,82 @@ export default function AdminPage() {
     });
   };
 
+  // Logout mutation
+  const logoutMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        throw new Error("خطا در خروج");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      // Clear all queries
+      queryClient.clear();
+      // Invalidate auth query
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      // Redirect to login
+      setLocation("/login");
+      toast({
+        title: "موفق",
+        description: "با موفقیت خارج شدید",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "خطا",
+        description: "خطا در خروج از حساب کاربری",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleLogout = () => {
+    logoutMutation.mutate();
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="border-b border-border/50 bg-background/95 backdrop-blur-xl shadow-sm">
         <div className="container mx-auto px-4 py-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0 hover:bg-primary/10 transition-colors"
+                onClick={() => setLocation("/")}
+                aria-label="بازگشت به صفحه گفتگو"
+                data-testid="button-back-to-chat"
+              >
+                <ArrowRight className="h-4 w-4" />
+              </Button>
               <div>
                 <h1 className="text-3xl font-title font-bold">پنل مدیریت</h1>
                 <p className="text-sm text-muted-foreground font-body mt-1">مدیریت کامل سیستم</p>
               </div>
               <BetaBadge />
             </div>
-            <Badge variant="outline" className="gap-2 px-3 py-1.5 shadow-md border-primary/20">
-              <Shield className="h-4 w-4" />
-              ادمین
-            </Badge>
+            <div className="flex items-center gap-3">
+              <Badge variant="outline" className="gap-2 px-3 py-1.5 shadow-md border-primary/20">
+                <Shield className="h-4 w-4" />
+                ادمین
+              </Badge>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 text-xs px-3 font-body hover:bg-destructive/10 hover:text-destructive transition-colors"
+                onClick={handleLogout}
+                disabled={logoutMutation.isPending}
+                data-testid="button-logout-admin"
+              >
+                <LogOut className="h-3.5 w-3.5 ml-1.5" />
+                {logoutMutation.isPending ? "در حال خروج..." : "خروج"}
+              </Button>
+            </div>
           </div>
         </div>
       </div>
