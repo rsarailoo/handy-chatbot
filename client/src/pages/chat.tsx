@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Cpu, Shield, FileText, MessageCircle } from "lucide-react";
+import { Cpu, Shield, FileText, MessageCircle, Pencil, Check, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SettingsDialog, type ModelType } from "@/components/settings-dialog";
@@ -12,6 +13,7 @@ import { ConversationSidebar, SidebarTrigger } from "@/components/conversation-s
 import { ChatMessage, TypingIndicator } from "@/components/chat-message";
 import { ChatInput } from "@/components/chat-input";
 import { EmptyState } from "@/components/empty-state";
+import { BetaBadge } from "@/components/beta-badge";
 import { useToast } from "@/hooks/use-toast";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { apiRequest } from "@/lib/queryClient";
@@ -22,6 +24,8 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [conversationTitle, setConversationTitle] = useState("گفتگوی جدید");
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editedTitle, setEditedTitle] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSystemPromptOpen, setIsSystemPromptOpen] = useState(false);
@@ -481,10 +485,61 @@ export default function ChatPage() {
                   <MessageCircle className="h-5 w-5 text-primary-foreground" />
                 </div>
               </div>
-              <h1 className="text-base md:text-lg font-title font-semibold text-foreground truncate max-w-[200px] md:max-w-none text-center">
-                {conversationTitle}
-              </h1>
+              {isEditingTitle ? (
+                <div className="flex items-center gap-1.5 bg-background/80 backdrop-blur-sm rounded-lg px-2 py-1 border border-border">
+                  <Input
+                    value={editedTitle}
+                    onChange={(e) => setEditedTitle(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleSaveTitle();
+                      if (e.key === "Escape") handleCancelEditTitle();
+                    }}
+                    className="h-7 text-sm font-title min-w-[150px] max-w-[300px]"
+                    autoFocus
+                  />
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-6 w-6"
+                    onClick={handleSaveTitle}
+                    disabled={updateTitleMutation.isPending}
+                  >
+                    <Check className="h-3.5 w-3.5 text-green-600" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-6 w-6"
+                    onClick={handleCancelEditTitle}
+                    disabled={updateTitleMutation.isPending}
+                  >
+                    <X className="h-3.5 w-3.5 text-red-600" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 group">
+                  <h1 className="text-base md:text-lg font-title font-semibold text-foreground truncate max-w-[200px] md:max-w-none text-center">
+                    {conversationTitle}
+                  </h1>
+                  {activeConversationId && (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={handleStartEditTitle}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
+            <BetaBadge className="hidden md:flex" />
+          </div>
+
+          {/* Beta Badge for mobile */}
+          <div className="md:hidden">
+            <BetaBadge />
           </div>
 
           <div className="flex items-center justify-end min-w-[96px]">

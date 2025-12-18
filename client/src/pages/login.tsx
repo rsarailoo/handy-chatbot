@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { BetaBadge } from "@/components/beta-badge";
 
 export default function LoginPage() {
   const [location, setLocation] = useLocation();
@@ -60,8 +61,11 @@ export default function LoginPage() {
   return (
     <div className="relative flex items-center justify-center min-h-screen bg-gradient-to-br from-background via-background to-primary/5 p-4">
       {/* کوچک بالا برای برچسب ورود/ثبت‌نام */}
-      <div className="absolute top-4 right-4 text-xs text-muted-foreground md:text-sm font-body">
-        ثبت‌نام / ورود
+      <div className="absolute top-4 right-4 flex items-center gap-3">
+        <BetaBadge />
+        <div className="text-xs text-muted-foreground md:text-sm font-body">
+          ثبت‌نام / ورود
+        </div>
       </div>
 
       <div className="w-full max-w-md space-y-8 animate-fade-in">

@@ -17,6 +17,7 @@ import {
   Edit,
   X,
 } from "lucide-react";
+import { BetaBadge } from "@/components/beta-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -296,9 +297,12 @@ export default function AdminPage() {
       <div className="border-b border-border/50 bg-background/95 backdrop-blur-xl shadow-sm">
         <div className="container mx-auto px-4 py-5">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-title font-bold">پنل مدیریت</h1>
-              <p className="text-sm text-muted-foreground font-body mt-1">مدیریت کامل سیستم</p>
+            <div className="flex items-center gap-3">
+              <div>
+                <h1 className="text-3xl font-title font-bold">پنل مدیریت</h1>
+                <p className="text-sm text-muted-foreground font-body mt-1">مدیریت کامل سیستم</p>
+              </div>
+              <BetaBadge />
             </div>
             <Badge variant="outline" className="gap-2 px-3 py-1.5 shadow-md border-primary/20">
               <Shield className="h-4 w-4" />

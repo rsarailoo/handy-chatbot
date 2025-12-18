@@ -19,7 +19,9 @@ import {
   Folder,
   FolderPlus,
   ChevronRight,
-  ChevronDown
+  ChevronDown,
+  Pencil,
+  Check
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -117,6 +119,8 @@ export function ConversationSidebar({
   const [isFolderDialogOpen, setIsFolderDialogOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [showArchived, setShowArchived] = useState(false);
+  const [editingConversationId, setEditingConversationId] = useState<string | null>(null);
+  const [editedTitle, setEditedTitle] = useState("");
   const { toast } = useToast();
 
   const { data: conversations = [], isLoading } = useQuery<Conversation[]>({
@@ -223,6 +227,45 @@ export function ConversationSidebar({
       queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
     },
   });
+
+  const updateTitleMutation = useMutation({
+    mutationFn: async ({ conversationId, title }: { conversationId: string; title: string }) => {
+      await apiRequest("PATCH", `/api/conversations/${conversationId}`, { title });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+      setEditingConversationId(null);
+      setEditedTitle("");
+      toast({
+        title: "موفق",
+        description: "عنوان گفتگو به‌روزرسانی شد",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "خطا",
+        description: "خطا در به‌روزرسانی عنوان",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleStartEditTitle = (conversation: Conversation, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingConversationId(conversation.id);
+    setEditedTitle(conversation.title);
+  };
+
+  const handleSaveTitle = () => {
+    if (editingConversationId && editedTitle.trim()) {
+      updateTitleMutation.mutate({ conversationId: editingConversationId, title: editedTitle.trim() });
+    }
+  };
+
+  const handleCancelEditTitle = () => {
+    setEditingConversationId(null);
+    setEditedTitle("");
+  };
 
   const toggleFolder = (folderId: string) => {
     setExpandedFolders((prev) => {
@@ -461,54 +504,105 @@ export function ConversationSidebar({
                     )} />
                   )}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm truncate font-title font-medium">{conversation.title}</p>
-                    <p className="text-xs text-muted-foreground font-body">
-                      {formatDate(conversation.updatedAt)}
-                    </p>
+                    {editingConversationId === conversation.id ? (
+                      <div className="flex items-center gap-1">
+                        <Input
+                          value={editedTitle}
+                          onChange={(e) => setEditedTitle(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleSaveTitle();
+                            if (e.key === "Escape") handleCancelEditTitle();
+                          }}
+                          className="h-7 text-sm font-title flex-1"
+                          autoFocus
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-6 w-6"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSaveTitle();
+                          }}
+                          disabled={updateTitleMutation.isPending}
+                        >
+                          <Check className="h-3.5 w-3.5 text-green-600" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-6 w-6"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCancelEditTitle();
+                          }}
+                          disabled={updateTitleMutation.isPending}
+                        >
+                          <X className="h-3.5 w-3.5 text-red-600" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-sm truncate font-title font-medium">{conversation.title}</p>
+                        <p className="text-xs text-muted-foreground font-body">
+                          {formatDate(conversation.updatedAt)}
+                        </p>
+                      </>
+                    )}
                   </div>
                   
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={(e) => e.stopPropagation()}
-                        data-testid={`button-conversation-menu-${conversation.id}`}
-                      >
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" dir="rtl">
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          pinMutation.mutate(conversation.id);
-                        }}
-                        data-testid={`button-pin-conversation-${conversation.id}`}
-                      >
-                        {conversation.isPinned === 1 ? (
-                          <>
-                            <PinOff className="h-4 w-4 ml-2" />
-                            Unpin
-                          </>
-                        ) : (
-                          <>
-                            <Pin className="h-4 w-4 ml-2" />
-                            Pin
-                          </>
-                        )}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-destructive focus:text-destructive cursor-pointer"
-                        onClick={(e) => handleDelete(conversation.id, e as any)}
-                        data-testid={`button-delete-conversation-${conversation.id}`}
-                      >
-                        <Trash2 className="h-4 w-4 ml-2" />
-                        حذف
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  {editingConversationId !== conversation.id && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => e.stopPropagation()}
+                          data-testid={`button-conversation-menu-${conversation.id}`}
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" dir="rtl">
+                        <DropdownMenuItem
+                          onClick={(e) => handleStartEditTitle(conversation, e)}
+                          data-testid={`button-edit-title-${conversation.id}`}
+                        >
+                          <Pencil className="h-4 w-4 ml-2" />
+                          تغییر عنوان
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            pinMutation.mutate(conversation.id);
+                          }}
+                          data-testid={`button-pin-conversation-${conversation.id}`}
+                        >
+                          {conversation.isPinned === 1 ? (
+                            <>
+                              <PinOff className="h-4 w-4 ml-2" />
+                              Unpin
+                            </>
+                          ) : (
+                            <>
+                              <Pin className="h-4 w-4 ml-2" />
+                              Pin
+                            </>
+                          )}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-destructive focus:text-destructive cursor-pointer"
+                          onClick={(e) => handleDelete(conversation.id, e as any)}
+                          data-testid={`button-delete-conversation-${conversation.id}`}
+                        >
+                          <Trash2 className="h-4 w-4 ml-2" />
+                          حذف
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                 </div>
               ))
             )}
