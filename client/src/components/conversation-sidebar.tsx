@@ -170,6 +170,17 @@ export function ConversationSidebar({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+      toast({
+        title: "موفق",
+        description: "گفتگو با موفقیت حذف شد",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "خطا",
+        description: "خطا در حذف گفتگو",
+        variant: "destructive",
+      });
     },
   });
 
@@ -183,10 +194,26 @@ export function ConversationSidebar({
 
   const pinMutation = useMutation({
     mutationFn: async (id: string) => {
+      const conversation = conversations.find(c => c.id === id);
+      const wasPinned = conversation?.isPinned === 1;
       await apiRequest("PATCH", `/api/conversations/${id}/pin`);
+      return { id, wasPinned };
     },
-    onSuccess: () => {
+    onSuccess: ({ wasPinned }) => {
       queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+      toast({
+        title: "موفق",
+        description: wasPinned 
+          ? "گفتگو از حالت پین خارج شد" 
+          : "گفتگو پین شد",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "خطا",
+        description: "خطا در تغییر وضعیت پین",
+        variant: "destructive",
+      });
     },
   });
 
@@ -253,6 +280,7 @@ export function ConversationSidebar({
     },
   });
 
+  // Define handleStartEditTitle with useCallback to ensure stable reference
   const handleStartEditTitle = useCallback((conversation: Conversation, e: React.MouseEvent) => {
     e.stopPropagation();
     setEditingConversationId(conversation.id);
@@ -620,7 +648,10 @@ export function ConversationSidebar({
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start" dir="rtl">
                         <DropdownMenuItem
-                          onClick={(e) => handleStartEditTitle(conversation, e)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleStartEditTitle(conversation, e);
+                          }}
                           data-testid={`button-edit-title-${conversation.id}`}
                         >
                           <Pencil className="h-4 w-4 ml-2" />
@@ -636,12 +667,12 @@ export function ConversationSidebar({
                           {conversation.isPinned === 1 ? (
                             <>
                               <PinOff className="h-4 w-4 ml-2" />
-                              Unpin
+                              لغو پین
                             </>
                           ) : (
                             <>
                               <Pin className="h-4 w-4 ml-2" />
-                              Pin
+                              پین کردن
                             </>
                           )}
                         </DropdownMenuItem>
