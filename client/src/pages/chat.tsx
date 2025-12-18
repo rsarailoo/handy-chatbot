@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Cpu, Shield, FileText, MessageCircle, Pencil, Check, X } from "lucide-react";
+import { Cpu, Shield, FileText, MessageCircle, Pencil, Check, X, LogOut } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -379,6 +379,95 @@ export default function ChatPage() {
 
   const [focusSearch, setFocusSearch] = useState(false);
 
+  // Update conversation title mutation
+  const updateTitleMutation = useMutation({
+    mutationFn: async (newTitle: string) => {
+      if (!activeConversationId) throw new Error("No active conversation");
+      const res = await apiRequest(`/api/conversations/${activeConversationId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ title: newTitle }),
+      });
+      return res;
+    },
+    onSuccess: (data) => {
+      setConversationTitle(data.title);
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations", activeConversationId] });
+      setIsEditingTitle(false);
+      toast({
+        title: "موفق",
+        description: "عنوان گفتگو به‌روزرسانی شد",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "خطا",
+        description: "خطا در به‌روزرسانی عنوان",
+        variant: "destructive",
+      });
+      setEditedTitle(conversationTitle);
+    },
+  });
+
+  const handleStartEditTitle = () => {
+    setEditedTitle(conversationTitle);
+    setIsEditingTitle(true);
+  };
+
+  const handleSaveTitle = () => {
+    if (editedTitle.trim() && editedTitle !== conversationTitle) {
+      updateTitleMutation.mutate(editedTitle.trim());
+    } else {
+      setIsEditingTitle(false);
+    }
+  };
+
+  const handleCancelEditTitle = () => {
+    setEditedTitle(conversationTitle);
+    setIsEditingTitle(false);
+  };
+
+  // Logout mutation
+  const logoutMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        throw new Error("خطا در خروج");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      // Clear all queries
+      queryClient.clear();
+      // Invalidate auth query
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      // Reset state
+      setActiveConversationId(null);
+      setMessages([]);
+      setConversationTitle("گفتگوی جدید");
+      // Redirect to login
+      setLocation("/login");
+      toast({
+        title: "موفق",
+        description: "با موفقیت خارج شدید",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "خطا",
+        description: "خطا در خروج از حساب کاربری",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleLogout = () => {
+    logoutMutation.mutate();
+  };
+
   // Keyboard shortcuts
   useKeyboardShortcuts({
     onSearch: () => {
@@ -542,8 +631,20 @@ export default function ChatPage() {
             <BetaBadge />
           </div>
 
-          <div className="flex items-center justify-end min-w-[96px]">
-            {!currentUser && (
+          <div className="flex items-center justify-end min-w-[96px] gap-2">
+            {currentUser ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 text-xs px-3 font-body hover:bg-destructive/10 hover:text-destructive transition-colors"
+                onClick={handleLogout}
+                disabled={logoutMutation.isPending}
+                data-testid="button-logout-header"
+              >
+                <LogOut className="h-3.5 w-3.5 ml-1.5" />
+                {logoutMutation.isPending ? "در حال خروج..." : "خروج"}
+              </Button>
+            ) : (
               <Button
                 variant="outline"
                 size="sm"

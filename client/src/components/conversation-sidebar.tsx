@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { 
   MessageSquarePlus, 
@@ -21,7 +21,8 @@ import {
   ChevronRight,
   ChevronDown,
   Pencil,
-  Check
+  Check,
+  LogOut
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,6 +50,7 @@ import { useToast } from "@/hooks/use-toast";
 import { SettingsDialog, type ModelType } from "@/components/settings-dialog";
 import { ExportDialog } from "@/components/export-dialog";
 import { useTheme } from "@/components/theme-provider";
+import { useLocation } from "wouter";
 import type { Message } from "@shared/schema";
 
 function ThemeToggleButton() {
@@ -112,6 +114,7 @@ export function ConversationSidebar({
   onAdminClick,
 }: ConversationSidebarProps) {
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null | undefined>(undefined);
@@ -250,21 +253,58 @@ export function ConversationSidebar({
     },
   });
 
-  const handleStartEditTitle = (conversation: Conversation, e: React.MouseEvent) => {
+  const handleStartEditTitle = useCallback((conversation: Conversation, e: React.MouseEvent) => {
     e.stopPropagation();
     setEditingConversationId(conversation.id);
     setEditedTitle(conversation.title);
-  };
+  }, []);
 
-  const handleSaveTitle = () => {
+  const handleSaveTitle = useCallback(() => {
     if (editingConversationId && editedTitle.trim()) {
       updateTitleMutation.mutate({ conversationId: editingConversationId, title: editedTitle.trim() });
     }
-  };
+  }, [editingConversationId, editedTitle, updateTitleMutation]);
 
-  const handleCancelEditTitle = () => {
+  const handleCancelEditTitle = useCallback(() => {
     setEditingConversationId(null);
     setEditedTitle("");
+  }, []);
+
+  const logoutMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        throw new Error("خطا در خروج");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      // Clear all queries
+      queryClient.clear();
+      // Invalidate auth query
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      // Redirect to login
+      setLocation("/login");
+      toast({
+        title: "موفق",
+        description: "با موفقیت خارج شدید",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "خطا",
+        description: "خطا در خروج از حساب کاربری",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleLogout = () => {
+    logoutMutation.mutate();
+    onMobileClose();
   };
 
   const toggleFolder = (folderId: string) => {
@@ -377,6 +417,19 @@ export function ConversationSidebar({
                 >
                   <Shield className="h-4 w-4 ml-2" />
                   پنل ادمین
+                </Button>
+              )}
+              {currentUser && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleLogout}
+                  disabled={logoutMutation.isPending}
+                  className="w-full justify-start font-body hover:bg-destructive/10 hover:text-destructive transition-colors"
+                  aria-label="خروج"
+                >
+                  <LogOut className="h-4 w-4 ml-2" />
+                  {logoutMutation.isPending ? "در حال خروج..." : "خروج"}
                 </Button>
               )}
             </div>
@@ -609,8 +662,8 @@ export function ConversationSidebar({
           </div>
         </ScrollArea>
         
-        {/* دکمه گفتگوی جدید در پایین سایدبار */}
-        <div className="p-3 border-t border-sidebar-border/50 bg-sidebar/50 backdrop-blur-sm">
+        {/* دکمه گفتگوی جدید و خروج در پایین سایدبار */}
+        <div className="p-3 border-t border-sidebar-border/50 bg-sidebar/50 backdrop-blur-sm space-y-2">
           <Button
             onClick={() => {
               onNewConversation();
@@ -622,6 +675,18 @@ export function ConversationSidebar({
             <MessageSquarePlus className="h-4 w-4 ml-2" />
             گفتگوی جدید
           </Button>
+          {currentUser && (
+            <Button
+              variant="outline"
+              onClick={handleLogout}
+              disabled={logoutMutation.isPending}
+              className="w-full font-body hover:bg-destructive/10 hover:text-destructive hover:border-destructive/50 transition-colors"
+              data-testid="button-logout"
+            >
+              <LogOut className="h-4 w-4 ml-2" />
+              {logoutMutation.isPending ? "در حال خروج..." : "خروج"}
+            </Button>
+          )}
         </div>
       </aside>
 
