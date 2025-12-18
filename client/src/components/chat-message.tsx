@@ -200,11 +200,11 @@ export function ChatMessage({
           ) : (
             <>
           {isUser ? (
-            <p className="whitespace-pre-wrap break-words text-base leading-relaxed font-body" dir="auto">
+            <p className="whitespace-pre-wrap break-words text-base leading-relaxed font-body" style={{ wordBreak: "break-word", overflowWrap: "anywhere" }} dir="auto">
               {message.content}
             </p>
           ) : (
-            <div className="font-body">
+            <div className="font-body break-words" style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}>
               <MarkdownMessage content={message.content} />
             </div>
               )}

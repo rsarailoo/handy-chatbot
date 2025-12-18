@@ -27,6 +27,7 @@ export default function ChatPage() {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = useState(true);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSystemPromptOpen, setIsSystemPromptOpen] = useState(false);
   // API Key از backend می‌آید (از environment variable)
@@ -55,7 +56,7 @@ export default function ChatPage() {
 
   const scrollToBottom = useCallback((smooth = true) => {
     if (scrollAreaRef.current) {
-      const scrollContainer = scrollAreaRef.current.querySelector("[data-radix-scroll-area-viewport]");
+      const scrollContainer = scrollAreaRef.current.querySelector("[data-radix-scroll-area-viewport]") as HTMLElement | null;
       if (scrollContainer) {
         scrollContainer.style.scrollBehavior = smooth ? "smooth" : "auto";
         scrollContainer.scrollTop = scrollContainer.scrollHeight;
@@ -383,14 +384,12 @@ export default function ChatPage() {
   const updateTitleMutation = useMutation({
     mutationFn: async (newTitle: string) => {
       if (!activeConversationId) throw new Error("No active conversation");
-      const res = await apiRequest(`/api/conversations/${activeConversationId}`, {
-        method: "PATCH",
-        body: JSON.stringify({ title: newTitle }),
-      });
-      return res;
+      const res = await apiRequest("PATCH", `/api/conversations/${activeConversationId}`, { title: newTitle });
+      const data = await res.json();
+      return data;
     },
     onSuccess: (data) => {
-      setConversationTitle(data.title);
+      setConversationTitle(data.title || editedTitle);
       queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
       queryClient.invalidateQueries({ queryKey: ["/api/conversations", activeConversationId] });
       setIsEditingTitle(false);
@@ -399,10 +398,11 @@ export default function ChatPage() {
         description: "عنوان گفتگو به‌روزرسانی شد",
       });
     },
-    onError: () => {
+    onError: (error: any) => {
+      console.error("Error updating title:", error);
       toast({
         title: "خطا",
-        description: "خطا در به‌روزرسانی عنوان",
+        description: error.message || "خطا در به‌روزرسانی عنوان",
         variant: "destructive",
       });
       setEditedTitle(conversationTitle);
@@ -487,6 +487,7 @@ export default function ChatPage() {
     "gpt-4": "GPT-4",
     "gpt-4-turbo": "GPT-4T",
     "gpt-5": "GPT-5",
+    "openai/gpt-oss-120b": "GPT-OSS-120B",
   };
 
   return (
@@ -498,6 +499,8 @@ export default function ChatPage() {
         onNewConversation={handleNewConversation}
         isMobileOpen={isSidebarOpen}
         onMobileClose={() => setIsSidebarOpen(false)}
+        isDesktopOpen={isDesktopSidebarOpen}
+        onDesktopToggle={() => setIsDesktopSidebarOpen(!isDesktopSidebarOpen)}
         focusSearch={focusSearch}
         // Props for mobile menu items
         model={model}
@@ -514,7 +517,11 @@ export default function ChatPage() {
       <div className="flex flex-col flex-1 min-w-0">
         <header className="sticky top-0 z-40 flex items-center justify-between px-4 py-3 border-b border-border/50 bg-background/95 backdrop-blur-xl shadow-sm relative transition-all duration-300">
           <div className="flex items-center gap-2">
-            <SidebarTrigger onClick={() => setIsSidebarOpen(true)} />
+            <SidebarTrigger 
+              onClick={() => setIsSidebarOpen(true)} 
+              onDesktopToggle={() => setIsDesktopSidebarOpen(!isDesktopSidebarOpen)}
+              isDesktopOpen={isDesktopSidebarOpen}
+            />
             {/* دکمه‌ها فقط در دسکتاپ نمایش داده می‌شوند */}
             <div className="hidden md:flex items-center gap-2">
               <ThemeToggle />
@@ -627,7 +634,7 @@ export default function ChatPage() {
           </div>
 
           {/* Beta Badge for mobile */}
-          <div className="md:hidden">
+          <div className="md:hidden flex items-center justify-center flex-1">
             <BetaBadge />
           </div>
 

@@ -85,6 +85,8 @@ interface ConversationSidebarProps {
   onNewConversation: () => void;
   isMobileOpen: boolean;
   onMobileClose: () => void;
+  isDesktopOpen?: boolean;
+  onDesktopToggle?: () => void;
   focusSearch?: boolean;
   // Props for mobile menu items
   model?: ModelType;
@@ -103,6 +105,8 @@ export function ConversationSidebar({
   onNewConversation,
   isMobileOpen,
   onMobileClose,
+  isDesktopOpen = true,
+  onDesktopToggle,
   focusSearch = false,
   model,
   onModelChange,
@@ -372,8 +376,9 @@ export function ConversationSidebar({
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed md:relative inset-y-0 right-0 z-50 w-72 bg-sidebar/95 backdrop-blur-xl border-l border-sidebar-border/50 flex flex-col transition-all duration-300 md:translate-x-0 shadow-xl md:shadow-none",
-          isMobileOpen ? "translate-x-0" : "translate-x-full md:translate-x-0"
+          "fixed md:relative inset-y-0 right-0 z-50 w-72 bg-sidebar/95 backdrop-blur-xl border-l border-sidebar-border/50 flex flex-col transition-all duration-300 shadow-xl md:shadow-none",
+          isMobileOpen ? "translate-x-0" : "translate-x-full",
+          isDesktopOpen ? "md:translate-x-0" : "md:translate-x-full md:hidden"
         )}
       >
         <div className="p-3 border-b border-sidebar-border/50 space-y-2 bg-sidebar/50 backdrop-blur-sm">
@@ -639,14 +644,14 @@ export function ConversationSidebar({
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="h-7 w-7 opacity-100 transition-opacity"
                           onClick={(e) => e.stopPropagation()}
                           data-testid={`button-conversation-menu-${conversation.id}`}
                         >
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" dir="rtl">
+                      <DropdownMenuContent align="start">
                         <DropdownMenuItem
                           onClick={(e) => {
                             e.stopPropagation();
@@ -784,16 +789,42 @@ export function ConversationSidebar({
   );
 }
 
-export function SidebarTrigger({ onClick }: { onClick: () => void }) {
+interface SidebarTriggerProps {
+  onClick: () => void;
+  onDesktopToggle?: () => void;
+  isDesktopOpen?: boolean;
+}
+
+export function SidebarTrigger({ onClick, onDesktopToggle, isDesktopOpen = true }: SidebarTriggerProps) {
   return (
-    <Button
-      variant="ghost"
-      size="icon"
-      className="md:hidden"
-      onClick={onClick}
-      data-testid="button-open-sidebar"
-    >
-      <Menu className="h-5 w-5" />
-    </Button>
+    <>
+      {/* Mobile trigger */}
+      <Button
+        variant="ghost"
+        size="icon"
+        className="md:hidden"
+        onClick={onClick}
+        data-testid="button-open-sidebar"
+      >
+        <Menu className="h-5 w-5" />
+      </Button>
+      {/* Desktop toggle */}
+      {onDesktopToggle && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="hidden md:flex"
+          onClick={onDesktopToggle}
+          data-testid="button-toggle-sidebar"
+          aria-label={isDesktopOpen ? "مخفی کردن sidebar" : "نمایش sidebar"}
+        >
+          {isDesktopOpen ? (
+            <ChevronRight className="h-5 w-5" />
+          ) : (
+            <Menu className="h-5 w-5" />
+          )}
+        </Button>
+      )}
+    </>
   );
 }

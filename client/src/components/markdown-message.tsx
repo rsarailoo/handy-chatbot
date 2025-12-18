@@ -15,7 +15,7 @@ export function MarkdownMessage({ content }: MarkdownMessageProps) {
   const { theme } = useTheme();
 
   return (
-    <div className="prose prose-sm dark:prose-invert max-w-none" dir="auto">
+    <div className="prose prose-sm dark:prose-invert max-w-none break-words" style={{ wordBreak: "break-word", overflowWrap: "anywhere" }} dir="auto">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
@@ -26,7 +26,7 @@ export function MarkdownMessage({ content }: MarkdownMessageProps) {
             if (isInline) {
               return (
                 <code
-                  className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono text-foreground"
+                  className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono text-foreground break-words"
                   {...props}
                 >
                   {children}
@@ -58,13 +58,13 @@ export function MarkdownMessage({ content }: MarkdownMessageProps) {
             return <hr className="my-4 border-border" />;
           },
           strong({ children }) {
-            return <strong className="font-semibold">{children}</strong>;
+            return <strong className="font-semibold break-words">{children}</strong>;
           },
           em({ children }) {
-            return <em className="italic">{children}</em>;
+            return <em className="italic break-words">{children}</em>;
           },
           p({ children }) {
-            return <p className="mb-3 last:mb-0 leading-relaxed">{children}</p>;
+            return <p className="mb-3 last:mb-0 leading-relaxed break-words" style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}>{children}</p>;
           },
           ul({ children }) {
             return <ul className="mb-3 list-disc pr-6 space-y-1">{children}</ul>;
