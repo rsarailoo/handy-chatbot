@@ -100,6 +100,8 @@ psql -U your-user -d your-database -f migration.sql
 # Or paste the contents of migration.sql in your database SQL editor
 ```
 
+**Note:** The session table for authentication persistence will be created automatically on first use. If you prefer to create it manually, run `migration_session.sql` as well.
+
 ### 5. Run the Application
 
 **Development Mode:**
@@ -177,7 +179,7 @@ psql -U postgres -d chatbot_db -f migration.sql
 | `SESSION_SECRET` | Yes | Session encryption key (32+ chars) | `your-secret-key...` |
 | `GOOGLE_CLIENT_ID` | Yes | Google OAuth Client ID | `xxx.apps.googleusercontent.com` |
 | `GOOGLE_CLIENT_SECRET` | Yes | Google OAuth Client Secret | `GOCSPX-xxx` |
-| `GOOGLE_CALLBACK_URL` | No | OAuth callback URL | `/api/auth/google/callback` |
+| `GOOGLE_CALLBACK_URL` | No | OAuth callback URL (full URL recommended) | `http://localhost:5001/api/auth/google/callback` (local) or `https://yourdomain.com/api/auth/google/callback` (production) |
 | `OPENROUTER_API_KEY` | Yes | OpenRouter API key | `sk-or-xxx` |
 | `ALLOWED_ORIGINS` | No | CORS allowed origins (comma-separated) | `https://yourdomain.com` |
 
@@ -189,9 +191,13 @@ psql -U postgres -d chatbot_db -f migration.sql
 4. Click **Create Credentials** → **OAuth client ID**
 5. Select **Web application**
 6. Add **Authorized redirect URIs**:
-   - Development: `http://localhost:5001/api/auth/google/callback`
-   - Production: `https://yourdomain.com/api/auth/google/callback`
+   - **Development:** `http://localhost:5001/api/auth/google/callback`
+   - **Production:** `https://yourdomain.com/api/auth/google/callback`
+   - ⚠️ **Important:** The URL must match exactly (including `http://` vs `https://` and port number)
 7. Copy Client ID and Client Secret to `.env`
+8. Set `GOOGLE_CALLBACK_URL` in `.env` to match the redirect URI exactly
+
+**Troubleshooting:** If you encounter `redirect_uri_mismatch` errors, see [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for detailed solutions.
 
 ### OpenRouter Setup
 
@@ -530,7 +536,15 @@ server {
 
 ## 🐛 Troubleshooting
 
-### Common Issues
+For detailed troubleshooting instructions, see **[TROUBLESHOOTING.md](./TROUBLESHOOTING.md)**.
+
+### Quick Fixes
+
+**Google OAuth `redirect_uri_mismatch` Error:**
+- Ensure `GOOGLE_CALLBACK_URL` in `.env` matches Google Cloud Console exactly
+- For local: `http://localhost:5001/api/auth/google/callback`
+- For production: `https://yourdomain.com/api/auth/google/callback`
+- Visit `/api/test/oauth` to verify your configuration
 
 **Database Connection Error:**
 ```bash
@@ -541,18 +555,15 @@ echo $DATABASE_URL
 psql $DATABASE_URL
 ```
 
-**Google OAuth Not Working:**
-- Verify callback URL matches Google Console settings
-- Check `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`
-- Ensure your domain is in authorized domains
-
 **Port Already in Use:**
 ```bash
 # Find process using port 5001
-lsof -i :5001
+lsof -i :5001  # macOS/Linux
+netstat -ano | findstr :5001  # Windows
 
 # Kill the process
-kill -9 <PID>
+kill -9 <PID>  # macOS/Linux
+taskkill /PID <PID> /F  # Windows
 ```
 
 **Build Errors:**
@@ -565,7 +576,7 @@ npm install
 ### Debug Endpoints (Development Only)
 
 - `GET /api/test/db` - Test database connection
-- `GET /api/test/oauth` - Check OAuth configuration
+- `GET /api/test/oauth` - Check OAuth configuration and callback URL
 
 ---
 

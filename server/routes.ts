@@ -247,25 +247,64 @@ export async function registerRoutes(
   
   // Test database connection endpoint
   app.get("/api/test/db", async (req, res) => {
+    const dbUrl = process.env.DATABASE_URL;
+    const dbUrlPreview = dbUrl ? (dbUrl.length > 50 ? `${dbUrl.substring(0, 50)}...` : dbUrl) : "not set";
+    
+    if (!dbUrl) {
+      return res.status(500).json({
+        success: false,
+        message: "DATABASE_URL is not set",
+        error: "DATABASE_URL environment variable is missing",
+        hint: "Please set DATABASE_URL in your .env file"
+      });
+    }
+
     try {
-      // Try to query users table
-      const users = await storage.getAllUsers();
+      // Try to query users table with timeout
+      const users = await Promise.race([
+        storage.getAllUsers(),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error("Database query timeout after 10 seconds")), 10000)
+        )
+      ]) as any[];
+      
       return res.json({ 
         success: true, 
         message: "Database connection successful",
         tablesExist: true,
-        userCount: users.length 
+        userCount: users.length,
+        databaseUrl: dbUrlPreview,
+        timestamp: new Date().toISOString()
       });
     } catch (error: any) {
       console.error("Database test error:", error);
       const isTableError = error?.code === "42P01" || error?.message?.includes("does not exist") || error?.message?.includes("relation");
+      const isTimeoutError = error?.message?.includes("timeout") || error?.code === "ETIMEDOUT";
+      const isConnectionError = error?.code === "ECONNREFUSED" || error?.code === "ENOTFOUND";
+      
+      let hint = "Check DATABASE_URL in .env file";
+      if (isTableError) {
+        hint = "Please run migration.sql in your database SQL editor";
+      } else if (isTimeoutError) {
+        hint = "Database connection timeout - check network, firewall, or database server status";
+      } else if (isConnectionError) {
+        hint = "Cannot connect to database - verify DATABASE_URL, check if database is running, and ensure firewall allows connections";
+      }
+      
       return res.status(500).json({ 
         success: false,
         message: "Database connection failed",
         error: error?.message,
         code: error?.code,
         tablesExist: !isTableError,
-        hint: isTableError ? "Please run migration.sql in Neon Console" : "Check DATABASE_URL in .env file"
+        databaseUrl: dbUrlPreview,
+        hint: hint,
+        troubleshooting: {
+          checkDatabaseUrl: "Verify DATABASE_URL is correct in .env file",
+          checkNetwork: "Ensure database server is accessible from your network",
+          checkSSL: "For cloud databases (Neon/Supabase), ensure SSL is properly configured",
+          checkMigrations: isTableError ? "Run migration.sql in your database SQL editor" : undefined
+        }
       });
     }
   });
@@ -274,15 +313,35 @@ export async function registerRoutes(
   app.get("/api/test/oauth", (req, res) => {
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-    const callbackUrl = process.env.GOOGLE_CALLBACK_URL || "/api/auth/google/callback";
+    
+    // Construct callback URL same way as auth.ts
+    let callbackUrl = process.env.GOOGLE_CALLBACK_URL;
+    if (!callbackUrl) {
+      if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
+        const port = process.env.PORT || "5001";
+        callbackUrl = `http://localhost:${port}/api/auth/google/callback`;
+      } else {
+        callbackUrl = "/api/auth/google/callback";
+      }
+    }
+    
+    // Determine full callback URL for display
+    let fullCallbackUrl = callbackUrl;
+    if (callbackUrl.startsWith("/")) {
+      // Relative path - construct full URL
+      const protocol = req.protocol;
+      const host = req.get("host");
+      fullCallbackUrl = `${protocol}://${host}${callbackUrl}`;
+    }
     
     return res.json({
       configured: !!(clientId && clientSecret),
       clientId: clientId ? `${clientId.substring(0, 20)}...` : "not set",
       clientSecret: clientSecret ? `${clientSecret.substring(0, 10)}...` : "not set",
       callbackUrl: callbackUrl,
-      fullCallbackUrl: `http://localhost:5001${callbackUrl}`,
-      hint: "Make sure this callback URL is added to Google Cloud Console as 'Authorized redirect URIs'"
+      fullCallbackUrl: fullCallbackUrl,
+      hint: "Make sure this full callback URL is added to Google Cloud Console as 'Authorized redirect URIs'",
+      googleConsoleUrl: "https://console.cloud.google.com/apis/credentials"
     });
   });
 
@@ -377,7 +436,13 @@ export async function registerRoutes(
       console.log("Is authenticated:", req.isAuthenticated());
       
       // Redirect to home page after successful authentication
-          res.redirect("/");
+      // Use absolute URL for better compatibility with Vercel and proxies
+      const protocol = req.protocol || (req.get("x-forwarded-proto") || "https");
+      const host = req.get("host") || req.hostname;
+      const redirectUrl = `${protocol}://${host}/`;
+      
+      console.log("Redirecting to:", redirectUrl);
+      res.redirect(redirectUrl);
     }
   );
 

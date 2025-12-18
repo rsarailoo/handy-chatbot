@@ -25,36 +25,120 @@ import {
   type InsertMessageReaction
 } from "@shared/schema";
 
-const pool = new Pool({ 
+// Helper function to determine SSL configuration
+function getSSLConfig() {
+  const dbUrl = process.env.DATABASE_URL || '';
+  
+  // Check if URL already has sslmode parameter
+  if (dbUrl.includes('sslmode=')) {
+    // URL already specifies SSL mode, let pg handle it
+    return undefined; // undefined means use URL's sslmode
+  }
+  
+  // For cloud databases, enable SSL
+  if (dbUrl.includes('supabase') || dbUrl.includes('neon') || dbUrl.includes('aws.neon.tech') || dbUrl.includes('neon.tech')) {
+    return { rejectUnauthorized: false };
+  }
+  
+  // For local databases, no SSL
+  return false;
+}
+
+// Helper function to determine connection timeout
+function getConnectionTimeout() {
+  const dbUrl = process.env.DATABASE_URL || '';
+  
+  // Cloud databases might need more time
+  if (dbUrl.includes('supabase') || dbUrl.includes('neon') || dbUrl.includes('aws.neon.tech')) {
+    return 30000; // 30 seconds for cloud databases
+  }
+  
+  return 15000; // 15 seconds for local databases
+}
+
+const poolConfig: any = {
   connectionString: process.env.DATABASE_URL,
-  ssl: (process.env.DATABASE_URL?.includes('supabase') || process.env.DATABASE_URL?.includes('neon')) 
-    ? { rejectUnauthorized: false } 
-    : false,
-  connectionTimeoutMillis: 10000, // 10 seconds
+  connectionTimeoutMillis: getConnectionTimeout(),
   idleTimeoutMillis: 30000,
   max: 20,
-});
+  // Allow pool to retry connections
+  allowExitOnIdle: false,
+};
+
+// Set SSL configuration
+const sslConfig = getSSLConfig();
+if (sslConfig !== undefined) {
+  poolConfig.ssl = sslConfig;
+}
+
+const pool = new Pool(poolConfig);
 const db = drizzle(pool);
 
 // Test connection on startup
 pool.on('error', (err) => {
-  console.error('Unexpected error on idle client', err);
+  console.error('❌ Unexpected error on idle database client:', err.message);
+  console.error('  - Error code:', err.code);
 });
 
-// Test connection
-pool.connect()
-  .then((client) => {
+// Test connection with better error handling
+async function testConnection() {
+  if (!process.env.DATABASE_URL) {
+    console.error('❌ DATABASE_URL environment variable is not set!');
+    console.error('   Please set DATABASE_URL in your .env file');
+    return;
+  }
+
+  const dbUrl = process.env.DATABASE_URL;
+  const dbUrlPreview = dbUrl.length > 50 ? `${dbUrl.substring(0, 50)}...` : dbUrl;
+  
+  console.log('🔌 Attempting database connection...');
+  console.log('📊 Database URL:', dbUrlPreview);
+  
+  try {
+    const client = await Promise.race([
+      pool.connect(),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Connection timeout after 30 seconds')), 30000)
+      )
+    ]) as any;
+    
     console.log('✅ Database connection successful');
-    console.log('📊 Database URL:', process.env.DATABASE_URL ? `${process.env.DATABASE_URL.substring(0, 30)}...` : 'not set');
+    
+    // Test a simple query
+    const result = await client.query('SELECT NOW() as current_time, version() as pg_version');
+    console.log('📊 PostgreSQL version:', result.rows[0].pg_version.split(' ')[0] + ' ' + result.rows[0].pg_version.split(' ')[1]);
+    console.log('🕐 Server time:', result.rows[0].current_time);
+    
     client.release();
-  })
-  .catch((err) => {
+  } catch (err: any) {
     console.error('❌ Database connection failed:');
     console.error('  - Error message:', err.message);
     console.error('  - Error code:', err.code);
-    console.error('  - Error stack:', err.stack);
-    console.error('  - Database URL:', process.env.DATABASE_URL ? `${process.env.DATABASE_URL.substring(0, 30)}...` : 'not set');
-  });
+    
+    if (err.code === 'ETIMEDOUT' || err.message.includes('timeout')) {
+      console.error('  - Possible causes:');
+      console.error('    1. Database server is not accessible (check firewall/network)');
+      console.error('    2. DATABASE_URL is incorrect');
+      console.error('    3. Database server is down');
+      console.error('    4. SSL/TLS configuration issue (for cloud databases)');
+    } else if (err.code === 'ENOTFOUND') {
+      console.error('  - Possible causes:');
+      console.error('    1. Database hostname is incorrect');
+      console.error('    2. DNS resolution failed');
+    } else if (err.code === 'ECONNREFUSED') {
+      console.error('  - Possible causes:');
+      console.error('    1. Database server is not running');
+      console.error('    2. Port number is incorrect');
+      console.error('    3. Firewall is blocking the connection');
+    }
+    
+    console.error('  - Database URL preview:', dbUrlPreview);
+    console.error('  - Full error:', err.stack);
+  }
+}
+
+// Run connection test
+testConnection();
 
 export interface IStorage {
   // Users

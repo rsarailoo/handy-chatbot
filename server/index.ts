@@ -1,6 +1,8 @@
 import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
+import connectPgSimple from "connect-pg-simple";
+import { Pool } from "pg";
 import helmet from "helmet";
 import cors from "cors";
 import passport from "./auth";
@@ -66,16 +68,79 @@ app.use(
 app.use(express.urlencoded({ extended: false, limit: "10mb" }));
 
 // Session configuration
+// For Vercel, we MUST use PostgreSQL session store because serverless functions are stateless
+// Memory sessions won't persist across different function instances
+const isProduction = process.env.NODE_ENV === "production" || process.env.VERCEL;
+const isSecure = isProduction; // Vercel uses HTTPS
+
+// Helper function to determine SSL configuration (same as storage.ts)
+function getSSLConfig() {
+  const dbUrl = process.env.DATABASE_URL || '';
+  
+  // Check if URL already has sslmode parameter
+  if (dbUrl.includes('sslmode=')) {
+    // URL already specifies SSL mode, let pg handle it
+    return undefined; // undefined means use URL's sslmode
+  }
+  
+  // For cloud databases, enable SSL
+  if (dbUrl.includes('supabase') || dbUrl.includes('neon') || dbUrl.includes('aws.neon.tech') || dbUrl.includes('neon.tech')) {
+    return { rejectUnauthorized: false };
+  }
+  
+  // For local databases, no SSL
+  return false;
+}
+
+// Configure PostgreSQL session store
+let sessionStore: session.Store;
+
+if (process.env.DATABASE_URL) {
+  try {
+    // Create a separate pool for session store to avoid conflicts
+    const sessionPoolConfig: any = {
+      connectionString: process.env.DATABASE_URL,
+    };
+    
+    // Set SSL configuration
+    const sslConfig = getSSLConfig();
+    if (sslConfig !== undefined) {
+      sessionPoolConfig.ssl = sslConfig;
+    }
+
+    const sessionPool = new Pool(sessionPoolConfig);
+
+    const PgStore = connectPgSimple(session);
+    sessionStore = new PgStore({
+      pool: sessionPool,
+      tableName: 'session', // Table name for sessions
+      createTableIfMissing: true, // Automatically create table if it doesn't exist
+    });
+    
+    console.log('✅ PostgreSQL session store configured');
+  } catch (error: any) {
+    console.error('❌ Failed to configure PostgreSQL session store:', error.message);
+    console.error('  - Error stack:', error.stack);
+    console.warn('⚠️ Falling back to memory store (sessions won\'t persist on Vercel)');
+    sessionStore = new session.MemoryStore();
+  }
+} else {
+  console.warn('⚠️ DATABASE_URL not set, using memory store (sessions won\'t persist on Vercel)');
+  sessionStore = new session.MemoryStore();
+}
+
 app.use(
   session({
+    store: sessionStore,
     secret: process.env.SESSION_SECRET || "your-secret-key-change-in-production",
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: process.env.NODE_ENV === "production",
+      secure: isSecure, // Use secure cookies in production/Vercel
       httpOnly: true,
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-      sameSite: "lax",
+      sameSite: "lax", // lax works for both HTTP and HTTPS
+      // For Vercel, ensure cookie domain is not set (defaults to current domain)
     },
   })
 );

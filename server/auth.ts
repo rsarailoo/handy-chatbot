@@ -8,14 +8,34 @@ export function isGoogleOAuthConfigured(): boolean {
   return !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
 }
 
+// Helper function to construct callback URL
+function getCallbackURL(): string {
+  // If explicitly set, use it
+  if (process.env.GOOGLE_CALLBACK_URL) {
+    return process.env.GOOGLE_CALLBACK_URL;
+  }
+  
+  // For local development, construct full URL
+  if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
+    const port = process.env.PORT || "5001";
+    return `http://localhost:${port}/api/auth/google/callback`;
+  }
+  
+  // Default to relative path (should be overridden in production)
+  return "/api/auth/google/callback";
+}
+
 // Configure Google OAuth Strategy only if credentials are provided
 if (isGoogleOAuthConfigured()) {
+  const callbackURL = getCallbackURL();
+  console.log("🔐 Google OAuth callback URL:", callbackURL);
+  
   passport.use(
     new GoogleStrategy(
       {
         clientID: process.env.GOOGLE_CLIENT_ID!,
         clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-        callbackURL: process.env.GOOGLE_CALLBACK_URL || "/api/auth/google/callback",
+        callbackURL: callbackURL,
       },
       async (accessToken, refreshToken, profile, done) => {
         try {
