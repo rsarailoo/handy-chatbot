@@ -33,7 +33,7 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
 }
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1/chat/completions";
-const OPENROUTER_MODEL = "amazon/nova-2-lite-v1:free";
+const OPENROUTER_MODEL = "arcee-ai/trinity-mini:free";
 const OPENROUTER_VISION_MODEL = "openai/gpt-4o"; // Vision-capable model (GPT-4o supports vision)
 
 // Security: Validate and sanitize API key
